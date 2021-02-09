@@ -1,0 +1,15 @@
+*.whl
+*.O
+*.pyc
+err.txt
+*.tar
+*.zip
+*.tgz
+*.swp
+*.~*
+~*.*
+*.exe
+*.obj
+*.tds
+*.map
+*.sqlite
