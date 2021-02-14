@@ -19,5 +19,7 @@
 	"raw_file" : "signals.csv",
 	"filter_window" : 7,
 	"time_window_threshold" : 1e-3,
-	"TimeWindowThreshold" : 7
+	"TimeWindowThreshold" : 7,
 }
+
+

@@ -171,6 +171,7 @@ int main(int argc, char const *argv[])
 	string strAddress, strErr, strData;
 
 	if (GetCliAddressPort (argc, argv, nPort, strAddress, strErr)) {
+		printf ("Connecting to server at %s:%d\n", strAddress.c_str(), nPort);
 		do {
 			strData = GetDataToSend();
 			//printf ("Data, please... ");
