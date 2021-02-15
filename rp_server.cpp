@@ -72,13 +72,32 @@ int OpenSocket (int nPort)
 }
 //-----------------------------------------------------------------------------
 
+void ActOnCommand (Document &document)
+{
+	try {
+		assert(document.IsObject());
+		if (document.HasMember("command")) {
+			printf ("'command' found\n");
+			const Value &val = document["command"];
+			if (val.IsString())
+				printf ("Command value is '%s'\n", val.GetString());
+			else
+				printf ("Command is not a string\n");
+		}
+	}
+	catch (exception &e) {
+		printf ("ActOnCommand Runtime error:\n%s\n", e.what());
+	}
+}
+//-----------------------------------------------------------------------------
+
 int main(int argc, char const *argv[])
 {
 	int server_fd, new_socket, valread;
 	struct sockaddr_in address;
 	int addrlen = sizeof(address);
 	char buffer[1024] = {0};
-	bool fParse;
+	bool fParseError;
 	int nPort;// = DEFAULT_PORT;
 	TStringQueue qCommand, qReply;
 	std::mutex mutex;
@@ -99,22 +118,24 @@ int main(int argc, char const *argv[])
 		memset (buffer, 0, sizeof (buffer));
 		valread = read( new_socket , buffer, 1024);
 		try {
-			fParse = document.Parse(buffer).HasParseError();
+			//fParse = document.Parse(buffer).HasParseError();
+			if ((fParseError = document.Parse(buffer).HasParseError()) == false)
+				ActOnCommand (document);
 			//fParse = reader.parse (buffer, root);
 		}
 		catch (std::exception &e) {
 			fprintf (stderr, "Parsing error:\n%s\n", e.what());
 		}
-		if (fParse)
-			strReply = "Text to JSON Parsing OK";
-		else
+		if (fParseError)
 			strReply = "Text to JSON Parsing fail";
+		else
+			strReply = "Text to JSON Parsing OK";
 		printf ("New Message of %d bytes\n", valread);
+		printf ("JSON Parsing: %s\n", strReply.c_str());
 		printf ("-------------------------------------------------------------------------------\n");
 		printf("%s\n", buffer);
 		printf ("-------------------------------------------------------------------------------\n");
 		//printf("Message recieved: %s, valread=%d\n", buffer, valread);
-		printf ("JSON Parsing: %s\n", strReply.c_str());
 		sprintf (szHello, "Server Hello #%d", n++);
 		send (new_socket , strReply.c_str(), strReply.size() ,0);
 		printf("Hello message sent\n");
