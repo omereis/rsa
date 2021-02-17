@@ -10,6 +10,7 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+
 #include "comm.h"
 
 using namespace std;
@@ -69,7 +70,7 @@ int SendData (const std::string &strAddress, int nPort, const std::string &strDa
 	int sock = 0, valread;
 	struct sockaddr_in serv_addr;
 	const char *hello = "Hello from client";
-	char buffer[1024] = {0};
+	char buffer[COMM_BUFFER_LENGTH] = {0};
 	string strErr;
 
 	printf ("Conecting to server %s:%d\n", strAddress.c_str(), nPort);
@@ -92,7 +93,7 @@ int SendData (const std::string &strAddress, int nPort, const std::string &strDa
 	//send(sock , hello , strlen(hello) , 0 );
 	send (sock, strData.c_str(), strData.size(), 0);
 	printf("Message sent: '%s'\n", strData.c_str());
-	valread = read( sock , buffer, 1024);
+	valread = read( sock , buffer, COMM_BUFFER_LENGTH);
 	printf("Server answer is: '%s'\n", buffer);
 }
 
@@ -145,18 +146,22 @@ std::string ReadJSONFile ()
 }
 //-----------------------------------------------------------------------------
 
-std::string GetDataToSend ()
+std::string GetDataToSend (bool &fToQuit)
 {
 	std::string strData;
+
 	PrintMenu();
+	fToQuit = false;
 	getline (cin, strData);
 	int nData = atoi (strData.c_str());
 	if (nData == 1)
 		strData = "Compose Message";
 	else if (nData == 2)
 		strData = ReadJSONFile ();//"JSON File";
-	else
-		strData = "";
+	else {
+		strData = "{\"quit\" : \"quit\"}";
+		fToQuit = true;
+	}
 	return (strData);
 }
 //-----------------------------------------------------------------------------
@@ -166,19 +171,17 @@ int main(int argc, char const *argv[])
 	int sock = 0, valread;
 	struct sockaddr_in serv_addr;
 	const char *hello = "Hello from client";
-	char buffer[1024] = {0};
+	char buffer[COMM_BUFFER_LENGTH] = {0};
 	int nPort;
 	string strAddress, strErr, strData;
+	bool fToQuit;
 
 	if (GetCliAddressPort (argc, argv, nPort, strAddress, strErr)) {
 		printf ("Connecting to server at %s:%d\n", strAddress.c_str(), nPort);
 		do {
-			strData = GetDataToSend();
-			//printf ("Data, please... ");
-			//getline (cin, strData);
-			if (strData.size() > 0)
-				SendData (strAddress, nPort, strData);
-		} while (strData.size() > 0);
+			strData = GetDataToSend(fToQuit);
+			SendData (strAddress, nPort, strData);
+		} while (fToQuit == false);
 	}
 	return 0;
 } 
