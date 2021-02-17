@@ -33,6 +33,9 @@ RUN mv vimrc .vimrc
 RUN mkdir -p /usr/include/redpitaya/include/
 RUN cp /home/oe/rp.h /usr/include/redpitaya/include/
 
+RUN cp -r nlohman/include/* /usr/include
+RUN rm -rf ./nlohman
+
 RUN mkdir -p /opt/redpitaya/include/
 RUN cp /home/oe/rp.h /opt/redpitaya/include/
 
