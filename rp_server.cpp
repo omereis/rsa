@@ -10,14 +10,8 @@
 
 #include "rapidjson/document.h"     // rapidjson's DOM-style API
 #include "rapidjson/prettywriter.h" // for stringify JSON
-/*
-#include <jsoncpp/json/json.h>
-#include <jsoncpp/json/reader.h>
-#include <jsoncpp/json/writer.h>
-#include <jsoncpp/json/value.h>
-*/
 
-//#define PORT 5500
+#include "pitaya_interface.h"
 
 #include "comm.h"
 #include "rsa_types.h"
@@ -72,10 +66,16 @@ int OpenSocket (int nPort)
 }
 //-----------------------------------------------------------------------------
 
-void ActOnCommand (Document &document)
+bool ActOnCommand (const std::string &strJson, Document &docCommand, string &strReply)
 {
+	bool f;
+
 	try {
-		assert(document.IsObject());
+		assert(docCommand.IsObject());
+		TPitayaInterface pi(docCommand);
+		f = pi.FollowCommand (strJson, docCommand, strReply);
+		//f = true;
+/*
 		if (document.HasMember("command")) {
 			printf ("'command' found\n");
 			const Value &val = document["command"];
@@ -84,19 +84,31 @@ void ActOnCommand (Document &document)
 			else
 				printf ("Command is not a string\n");
 		}
+*/
 	}
 	catch (exception &e) {
 		printf ("ActOnCommand Runtime error:\n%s\n", e.what());
+		f = false;
 	}
+	return (f);
 }
 //-----------------------------------------------------------------------------
+
+string ToLower (const std::string &str)
+{
+	string strLower;
+
+	for (int n=0 ; n < str.size() ; n++)
+		strLower += tolower(str[n]);
+	return (strLower);
+}
 
 int main(int argc, char const *argv[])
 {
 	int server_fd, new_socket, valread;
 	struct sockaddr_in address;
 	int addrlen = sizeof(address);
-	char buffer[1024] = {0};
+	char buffer[COMM_BUFFER_LENGTH];
 	bool fParseError;
 	int nPort;// = DEFAULT_PORT;
 	TStringQueue qCommand, qReply;
@@ -115,30 +127,33 @@ int main(int argc, char const *argv[])
 			perror("accept");
 			exit(EXIT_FAILURE);
 		}
-		memset (buffer, 0, sizeof (buffer));
-		valread = read( new_socket , buffer, 1024);
+		memset (buffer, 0, COMM_BUFFER_LENGTH);
+		valread = read( new_socket , buffer, COMM_BUFFER_LENGTH);
 		try {
-			//fParse = document.Parse(buffer).HasParseError();
-			if ((fParseError = document.Parse(buffer).HasParseError()) == false)
-				ActOnCommand (document);
+			string strMessage (buffer);
+			string strJson = ToLower (strMessage);
+			//if ((fParseError = document.Parse(buffer).HasParseError()) == false)
+			if ((fParseError = document.Parse(strJson.c_str()).HasParseError()) == false)
+				if (!ActOnCommand (strJson, document, strReply))
+					valread = 0;
 			//fParse = reader.parse (buffer, root);
 		}
 		catch (std::exception &e) {
 			fprintf (stderr, "Parsing error:\n%s\n", e.what());
 		}
 		if (fParseError)
-			strReply = "Text to JSON Parsing fail";
+			strReply += "\nText to JSON Parsing fail";
 		else
-			strReply = "Text to JSON Parsing OK";
+			strReply += "\nText to JSON Parsing OK";
 		printf ("New Message of %d bytes\n", valread);
 		printf ("JSON Parsing: %s\n", strReply.c_str());
 		printf ("-------------------------------------------------------------------------------\n");
-		printf("%s\n", buffer);
-		printf ("-------------------------------------------------------------------------------\n");
+		//printf("%s\n", buffer);
+		//printf ("-------------------------------------------------------------------------------\n");
 		//printf("Message recieved: %s, valread=%d\n", buffer, valread);
-		sprintf (szHello, "Server Hello #%d", n++);
+		//sprintf (szHello, "Server Hello #%d", n++);
 		send (new_socket , strReply.c_str(), strReply.size() ,0);
-		printf("Hello message sent\n");
+		//printf("Hello message sent\n");
 	} while (valread > 0);
 	return 0;
 }
