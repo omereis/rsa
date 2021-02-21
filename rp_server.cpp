@@ -13,8 +13,8 @@
 
 #include "pitaya_interface.h"
 
-#include "comm.h"
-#include "rsa_types.h"
+#include "rsa.h"
+//#include "rsa_types.h"
 
 using namespace rapidjson;
 using namespace std;
@@ -73,7 +73,8 @@ bool ActOnCommand (const std::string &strJson, Document &docCommand, string &str
 	try {
 		assert(docCommand.IsObject());
 		TPitayaInterface pi(docCommand);
-		f = pi.FollowCommand (strJson, docCommand, strReply);
+		//f = pi.FollowCommand (strJson, strReply);
+		f = pi.FollowCommand (docCommand, strReply);
 		//f = true;
 /*
 		if (document.HasMember("command")) {

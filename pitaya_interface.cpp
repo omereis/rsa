@@ -1,18 +1,20 @@
 /*
-RPCommand.cpp
+pitaya_interface.cpp
 */
 
-#include <nlohmann/json.hpp>
 
+#include <stdlib.h>
 #include "pitaya_interface.h"
 
+#include "rapidjson/document.h"     // rapidjson's DOM-style API
+#include "rapidjson/prettywriter.h" // for stringify JSON
 #include "redpitaya/include/rp.h"
 
-#include "comm.h"
-#include "rsa_types.h"
+#include "rsa.h"
+//#include "rsa_types.h"
+#include "misc.h"
 
 using namespace rapidjson;
-using json = nlohmann::json;
 using namespace std;
 //-----------------------------------------------------------------------------
 TPitayaInterface::TPitayaInterface ()
@@ -30,40 +32,59 @@ TPitayaInterface::~TPitayaInterface ()
 {
 }
 //-----------------------------------------------------------------------------
-bool TPitayaInterface::FollowCommand (const std::string &str, Document &docCommand, string &strReply)
+
+bool TPitayaInterface::FollowCommand (const Document &docCommand, std::string &strReply)
 {
 	string strCommand;
 	bool f;
 	
 	try {
-		json jCommand = json::parse(str.c_str());
-		if (jCommand.contains("quit"))
-			f = false;
-		else {
-			if (jCommand.contains("trigger"))
-				printf ("Lohmann found trigger\n");
-			else
-				printf ("Lohmann could NOT find  trigger\n");
-			if (docCommand.HasMember("trigger"))
-//int rp_AcqSetTriggerSrc(rp_acq_trig_src_t source);
-//int rp_AcqGetTriggerSrc(rp_acq_trig_src_t* source);
-// int rp_AcqSetTriggerDelay(int32_t decimated_data_num);
-// int rp_AcqGetTriggerDelay(int32_t* decimated_data_num);
-// int rp_AcqSetTriggerDelayNs(int64_t time_ns);
-// int rp_AcqGetTriggerDelayNs(int64_t time_ns);
-// int rp_AcqSetTriggerLevel(rp_channel_trigger_t channel, float voltage);
-// int rp_AcqGetTriggerLevel(rp_channel_trigger_t channel, float* voltage);
-// int rp_GenTriggerSource(rp_channel_t channel, rp_trig_src_t src);
-// int rp_GenGetTriggerSource(rp_channel_t channel, rp_trig_src_t *src);
-				printf ("Got trigger command\n");
-			if (docCommand.HasMember("sampling"))
-				printf ("Got sampling command\n");
-			f = true;
+		if (docCommand.HasMember ("trigger")) {
+			const Value &valTrigger = docCommand["trigger"];
+			SetTrigger(valTrigger, strReply);
+			//SetTrigger(docCommand["trigger"]);
 		}
 	}
 	catch (exception &e) {
 			f = false;
 	}
 	return (f);
+}
+//-----------------------------------------------------------------------------
+
+bool TPitayaInterface::SetTrigger (const Value &valTrigger, string &strReply)
+{
+	std::string strLevel;
+	bool fRead;
+
+	if (valTrigger.HasMember("level")) {
+		const Value &valLevel = valTrigger["level"];
+		if (valLevel.IsString())
+			strLevel = valLevel.GetString();
+		else if (valLevel.IsDouble()) {
+			printf ("value is double\n");
+			strLevel = to_string(valLevel.GetDouble());
+		}
+		if (strLevel.size() > 0)
+			fRead = SetTriggerLevel (strLevel, strReply);
+		else
+			fRead = false;
+	}
+	return (fRead);
+}
+//-----------------------------------------------------------------------------
+
+bool TPitayaInterface::SetTriggerLevel (const std::string &strLevel, std::string &strReply)
+{
+	Document docSetup;
+	
+	if (ReadPitayaSetup (docSetup)) {
+		Value &valTrigger = docSetup["trigger"];
+		Value &valLevel = valTrigger["level"];
+		valLevel.SetDouble (std::stod(strLevel));
+		WriteJson (docSetup);
+	}
+	strReply = strLevel;
+	return (true);
 }
 //-----------------------------------------------------------------------------

@@ -11,7 +11,7 @@
 #include <iostream>
 #include <fstream>
 
-#include "comm.h"
+#include "rsa.h"
 
 using namespace std;
 
