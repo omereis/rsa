@@ -2,16 +2,18 @@
 CPP = g++	
 CFLAGS = -std=c++11 -g
 
-# rp_server: rp_server.o rpcommand.o Makefile rsa_types.h comm.h
 #	$(CPP) $(CFLAGS) -o $@ rp_server.o rpcommand.o
 
-OBJECTS = rp_server.o pitaya_interface.o
+OBJECTS = rp_server.o pitaya_interface.o misc.o
 #OBJECTS = rp_server.o rpcommand.o pitaya_interface.o
-INCLUDES = rsa_types.h comm.h
+INCLUDES = rsa.h misc.h
 SOURCES = rp_server.cpp rp_client.cpp rpcommand.cpp pitaya_interface.cpp
 
 
 all: rp_server rp_client
+
+misc.o : misc.cpp $(INCLUDES)
+	$(CPP) -c $(CFLAGS) $< -o $@
 
 pitaya_interface.o : pitaya_interface.cpp pitaya_interface.h Makefile
 	$(CPP) -c $(CFLAGS) $< -o $@
