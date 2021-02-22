@@ -23,6 +23,11 @@ public:
 protected:
 	bool SetTrigger (const Value &valTrigger, std::string &strReply);
 	bool SetTriggerLevel (const string &strLevel, string &strReply);
+	bool SetTriggerLevel (const Value &valLevel, std::string &strReply);
+	bool ExtractValueReal (const Value &val, double &dValue);
+	bool ExtractValueString (const Value &val, std::string &str);
+	bool UpdateTriggerItem (const char *szTriggerItem, const double &dValue);
+	bool UpdateTriggerItem (const char *szTriggerItem, const std::string &strLevel);
 private:
 	Document m_document;
 	
