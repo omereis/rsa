@@ -1,7 +1,6 @@
-/*
-pitaya_interface.cpp
-*/
-
+/******************************************************************************\
+|                            pitaya_interface.cpp                              |
+\******************************************************************************/
 
 #include <stdlib.h>
 #include "pitaya_interface.h"
@@ -13,9 +12,6 @@ pitaya_interface.cpp
 #include "rsa.h"
 #include "misc.h"
 #include "const_strings.h"
-
-//extern const std::string g_strTrigger;
-//extern const std::string g_strLevel;
 
 using namespace rapidjson;
 using namespace std;
@@ -44,7 +40,6 @@ bool TPitayaInterface::FollowCommand (const Document &docCommand, std::string &s
 	bool f = false;
 	
 	try {
-		//if (docCommand.HasMember ("trigger")) {
 		if (docCommand.HasMember (RPSU_TRIGGER)) {
 			const Value &valTrigger = docCommand[RPSU_TRIGGER];
 			f = SetTrigger(valTrigger, strReply);
@@ -63,21 +58,29 @@ bool TPitayaInterface::SetTrigger (const Value &valTrigger, string &strReply)
 	bool fRead=false;
 	double dValue;
 
-	if (valTrigger.HasMember(RPSU_DELAY)) {
-		if ((fRead = ExtractValueReal (valTrigger[RPSU_DELAY], dValue)) == true)
-			fRead = UpdateTriggerItem (RPSU_DELAY, dValue);
-	}
-	if (valTrigger.HasMember(RPSU_LEVEL)) {
-		if ((fRead = ExtractValueReal (valTrigger[RPSU_LEVEL], dValue)) == true)
-			fRead = UpdateTriggerItem (RPSU_LEVEL, dValue);
-	}
-	if (valTrigger.HasMember(RPSU_SOURCE)) {
-		if ((fRead = ExtractValueString (valTrigger[RPSU_SOURCE], str)) == true)
-			fRead = UpdateTriggerItem (RPSU_SOURCE, str);
-	}
-	if (valTrigger.HasMember(RPSU_DIR)) {
-		if ((fRead = ExtractValueString (valTrigger[RPSU_DIR], str)) == true)
-			fRead = UpdateTriggerItem (RPSU_DIR, str);
+	fRead = UpdateTriggerValueItem(valTrigger, RPSU_DELAY, EVT_REAL);
+	fRead != UpdateTriggerValueItem(valTrigger, RPSU_LEVEL, EVT_REAL);
+	fRead != UpdateTriggerValueItem(valTrigger, RPSU_SOURCE, EVT_STRING);
+	fRead != UpdateTriggerValueItem(valTrigger, RPSU_DIR, EVT_STRING);
+	return (fRead);
+}
+//-----------------------------------------------------------------------------
+
+bool TPitayaInterface::UpdateTriggerValueItem(const Value &valTrigger, const char *szItem, EValueType type)
+{
+	std::string str;
+	bool fRead=false;
+	double dValue;
+
+	if (valTrigger.HasMember(szItem)) {
+		if (type == EVT_REAL) {
+			if ((fRead = ExtractValueReal (valTrigger[szItem], dValue)) == true)
+				fRead = UpdateTriggerItem (szItem, dValue);
+		}
+		else if (type == EVT_STRING) {
+			if ((fRead = ExtractValueString (valTrigger[szItem], str)) == true)
+				fRead = UpdateTriggerItem (szItem, str);
+		}
 	}
 	return (fRead);
 }
@@ -97,10 +100,6 @@ bool TPitayaInterface::ExtractValueReal (const Value &val, double &dValue)
 		dValue = (double) val.GetInt();
 	else
 		fRead = false;
-	//if (strLevel.size() > 0)
-		//fRead = SetTriggerLevel (strLevel, strReply);
-	//else
-		//fRead = false;
 	return (fRead);
 }
 //-----------------------------------------------------------------------------

@@ -1,9 +1,9 @@
 {
     "trigger" : {
-        "level" : 5e-3,
-        "delay" : 100,
-        "source" : "in1",
-		"direction" : "rise"
+        "level" : 543e-3,
+        "delay" : 789,
+        "source" : "In2",
+		"direction" : "Fall"
     },
     "sampling" : {
         "rate": 125e6,
