@@ -11,6 +11,7 @@ m i s c . c p p
 #include <rapidjson/writer.h>
 #include <cstdio>
 
+//-----------------------------------------------------------------------------
 bool ReadFile (const std::string &strFileName, std::string &strContent)
 {
 	bool fRead;
