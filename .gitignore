@@ -13,3 +13,5 @@ err.txt
 *.tds
 *.map
 *.sqlite
+*.csv
+
