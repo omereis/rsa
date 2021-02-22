@@ -26,4 +26,5 @@ typedef vector<string> TStringVector;
 //-----------------------------------------------------------------------------
 
 enum ERPCommand {ERPC_SAMPLING, ERPC_GET_TRIGGER, ERPC_SET_TRIGGER, ERPC_GET_SIGNALS, ERPC_GET_SAMPLES, ERPC_NONE};
+
 #endif // RSA
