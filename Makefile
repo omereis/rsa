@@ -6,7 +6,7 @@ CFLAGS = -std=c++11 -g
 
 OBJECTS = rp_server.o pitaya_interface.o misc.o
 #OBJECTS = rp_server.o rpcommand.o pitaya_interface.o
-INCLUDES = rsa.h misc.h
+INCLUDES = rsa.h misc.h const_strings.h
 SOURCES = rp_server.cpp rp_client.cpp rpcommand.cpp pitaya_interface.cpp
 
 
