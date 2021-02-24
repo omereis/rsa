@@ -7,14 +7,20 @@
 #include <string.h>
 #include <netdb.h>
 
+#include <mutex>
+#include <thread>
+
 #include <string>
 #include <iostream>
 #include <fstream>
 
 #include "rsa.h"
+#include "misc.h"
 
 using namespace std;
 
+static std::mutex mutexQuitSender;
+static bool s_fQuitSender = false;
 //-----------------------------------------------------------------------------
 std::string FindHostIPByName (const std::string &strHostName)
 {
@@ -62,6 +68,74 @@ bool GetCliAddressPort (int argc, char const *argv[], int &nPort, string &strAdd
 		f = false;
 	}
 	return (f);
+}
+//-----------------------------------------------------------------------------
+
+std::string GetResultFileName()
+{
+	std::string strName, strBase ("remote"), strExt("csv");
+	FILE *file;
+	char szBuf[100];
+
+	int n=0;
+		while (strName.size() == 0) {
+		sprintf (szBuf, "%s%02d.%s", strBase.c_str(), n++, strExt.c_str());
+		file = fopen (szBuf, "r");
+		if (file == NULL)
+			strName = std::string (szBuf);
+		else
+			fclose (file);
+	}
+	return (strName);
+}
+//-----------------------------------------------------------------------------
+
+void ReadSamples (int nPort, int nSampleLen)
+{
+	int server_fd, new_socket, valread;
+	struct sockaddr_in address;
+	int addrlen = sizeof(address);
+	int nBufferSize = nSampleLen * sizeof (float);
+	char *buffer = new char [nSampleLen * sizeof (float)];
+	bool fQuit;
+	
+	mutexQuitSender.lock();
+	fQuit = s_fQuitSender = false;
+	mutexQuitSender.unlock();
+
+	while (!fQuit) {
+		server_fd = OpenServerSocket (nPort);
+		if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0){ 
+			perror("accept");
+			exit(EXIT_FAILURE);
+		}
+		memset (buffer, 0, nBufferSize);
+		valread = read(new_socket, buffer, nBufferSize);
+		if (valread > 0) {
+			float *pNum = (float*) buffer;
+			TFloatVector vf;
+			int n=0;
+			while (n < valread) {
+				vf.push_back (*pNum);
+				pNum ++;
+				n += sizeof (*pNum);
+			}
+			if (vf.size() > 0) {
+				TFloatVector::iterator i;
+				std::string strFileName = GetResultFileName();
+				//FILE *file = fopen ("remote.csv", "w+");
+				FILE *file = fopen (strFileName.c_str(), "w+");
+				for (i=vf.begin() ; i != vf.end() ; i++)
+					fprintf (file, "%g\n", *i);
+				fclose (file);
+			}
+		}
+		mutexQuitSender.lock();
+		fQuit = s_fQuitSender;
+		mutexQuitSender.unlock();
+	}
+
+	delete[] buffer;
 }
 //-----------------------------------------------------------------------------
 
@@ -177,11 +251,16 @@ int main(int argc, char const *argv[])
 	bool fToQuit;
 
 	if (GetCliAddressPort (argc, argv, nPort, strAddress, strErr)) {
+		thread thReadSamples (ReadSamples, nPort + 1, 6250);
 		printf ("Connecting to server at %s:%d\n", strAddress.c_str(), nPort);
 		do {
 			strData = GetDataToSend(fToQuit);
 			SendData (strAddress, nPort, strData);
 		} while (fToQuit == false);
+		mutexQuitSender.lock();
+		s_fQuitSender = true;
+		mutexQuitSender.unlock();
+		thReadSamples.join();
 	}
 	return 0;
 } 
