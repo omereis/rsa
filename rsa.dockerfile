@@ -39,7 +39,9 @@ RUN cp /home/oe/rp.h /opt/redpitaya/include/
 ENV CPLUS_INCLUDE_PATH = $CPLUS_INCLUDE_PATH:/opt
 ENV C_INCLUDE_PATH = $C_INCLUDE_PATH:/opt
 
+RUN ln -s $HOME/rp_signal.dat $HOME/signal.dat
+
 #RUN cd $HOME &&\
-#		g++ -g -o server -ljsoncpp server.cpp
+#	make
 
 # EXPOSE 6000
