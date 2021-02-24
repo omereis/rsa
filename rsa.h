@@ -11,6 +11,10 @@ using namespace std;
 
 #define	COMM_BUFFER_LENGTH	8192
 
+#define	MAX_BUFF_SIZE	8192
+
+#define	MAX_QUEUE_LENGTH	1000
+
 #ifndef	PITAYA_MOCK_NAME
 #define	PITAYA_MOCK_NAME	"red_pitaya.json"
 #endif	//PITAYA_MOCK_NAME
@@ -22,6 +26,10 @@ typedef queue<string> TStringQueue;
 //-----------------------------------------------------------------------------
 #ifndef TStringVector
 typedef vector<string> TStringVector;
+#endif // TStringVector
+//-----------------------------------------------------------------------------
+#ifndef TFloatVector
+typedef vector<float> TFloatVector;
 #endif // TStringVector
 //-----------------------------------------------------------------------------
 
