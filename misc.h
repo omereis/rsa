@@ -1,6 +1,9 @@
 #ifndef	__MISC_H_INC
 #define	__MISC_H_INC
 
+#include <sys/socket.h> 
+#include <netinet/in.h> 
+
 #include <string>
 
 #include "rapidjson/document.h"     // rapidjson's DOM-style API
@@ -13,6 +16,7 @@ using namespace std;
 bool ReadFile (const std::string &strFileName, std::string &strContent);
 bool ReadPitayaSetup (Document &docSetup);
 bool WriteJson (Document &doc);
+int OpenServerSocket (int nPort);
 
 //-----------------------------------------------------------------------------
 #endif //__MISC_H_INC
