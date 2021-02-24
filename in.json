@@ -1,20 +1,36 @@
 {
     "trigger" : {
-        "level" : 543e-3,
-        "delay" : 789,
+        "level" : -15e-3,
+        "delay" : 100,
         "source" : "In2",
 		"direction" : "Fall"
     },
     "sampling" : {
         "rate": 125e6,
-        "decimation" : 1
+        "decimation" : 1,
+		"every": 1,
+		"command" : "start",
+		"output" : {
+			"samples" : 1000,
+			"sample_length" : 6250
+		},
+		"return_port" : 5501,
+		"process" : ["psd","mca"]
     },
+	"output" : {
+		"samples" : 1000,
+		"length" : 6250
+	},
+	"psd" : {
+		"threshold" : 1e-3,
+		"short" : 500e-9,
+		"long" : 1e-6,
+		"MovingAverageWindow" : 7
+	},
     "samples" : 1000,
     "samplim" : 6250,
     "debug_iterations" : 10,
     "iterations" : 1000,
-    "short" : 500e-9,
-    "long" : 1e-6,
 	"pulses" : 10,
 	"print_raw" : 10,
 	"raw_file" : "signals.csv",
