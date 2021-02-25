@@ -25,6 +25,8 @@ public:
 	int GetSamplesCount() const;
 	int GetSampleLength() const;
 	int GetReturnPort() const;
+
+	void SetClientIP (const char *szClientIP);
 protected:
 	bool SetTrigger (const Value &valTrigger, std::string &strReply);
 	bool SetTriggerLevel (const string &strLevel, string &strReply);
@@ -40,6 +42,8 @@ protected:
 	void  SetDefaultParams ();
 	bool HandleSampling (const Value &valSampling, std::string &strReply);
 	bool HandleSamplingParams (const Value &valParams, std::string &strReply);
+
+	bool StartSampling (const Value &valSampling, std::string &strReply);
 private:
 	Document m_document;
 	int m_nSamples;

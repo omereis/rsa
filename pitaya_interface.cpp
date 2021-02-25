@@ -33,6 +33,15 @@ static bool s_fStopSender=false;
 extern std::mutex mutexQueue;
 extern queue<TRpSignal> qSignals;
 //-----------------------------------------------------------------------------
+void SetQuitSender (bool f)
+{
+	mutexSender.lock();
+	s_fStopSender = f;
+	if (s_fStopSender)
+		s_fStopSender = true;
+	mutexSender.unlock();
+}
+//-----------------------------------------------------------------------------
 int GetSample (float *afSamples, int nSampleLength)
 {
 	TRpSignal sig;
@@ -67,17 +76,11 @@ bool SendSamples (float *afSamples, int nSampleLength, const std::string &strCli
 	return (valread > 0);
 }
 //-----------------------------------------------------------------------------
-void SetQuitSender (bool f)
-{
-	mutexSender.lock();
-	s_fStopSender = f;
-	mutexSender.unlock();
-}
-//-----------------------------------------------------------------------------
 
 void BinSender (TPitayaInterface *pInterface)
 {
 	bool fQuit = false;
+	int nSamplesSend=0;
 	
 	while (!fQuit) {
 		std::this_thread::sleep_for(2000ms);
@@ -85,13 +88,21 @@ void BinSender (TPitayaInterface *pInterface)
 		if (GetSample (afSamples, pInterface->GetSampleLength()) > 0)
 			if (!SendSamples (afSamples, pInterface->GetSampleLength(), pInterface->GetClientIP(), pInterface->GetReturnPort()))
 				fQuit = true;
+			else {
+				nSamplesSend++;
+				if (nSamplesSend >= pInterface->GetSamplesCount())
+					fQuit = true;
+			}
 		delete[] afSamples;
 		if (!fQuit) {
 			mutexSender.lock();
 			fQuit = s_fStopSender;
 			mutexSender.unlock();
 		}
+		else
+			nSamplesSend += 0;
 	}
+	nSamplesSend += 0;
 }
 //-----------------------------------------------------------------------------
 
@@ -114,9 +125,10 @@ TPitayaInterface::TPitayaInterface (const char *szClientIP)
 TPitayaInterface::~TPitayaInterface ()
 {
 	if (m_pSendThread != NULL) {
-		mutexSender.lock();
-		s_fStopSender = true;
-		mutexSender.unlock();
+		SetQuitSender (true);
+		//mutexSender.lock();
+		//s_fStopSender = true;
+		//mutexSender.unlock();
 		m_pSendThread->join();
 		delete m_pSendThread;
 	}
@@ -267,6 +279,19 @@ bool TPitayaInterface::GetTriggerString (std::string &strReply)
 }
 //-----------------------------------------------------------------------------
 
+bool GetJsonInt (const Value &val, const std::string &strKey, int &nValue)
+{
+	const char *szKey = strKey.c_str();
+	bool fKeyExists = true;
+
+	if (val.HasMember (szKey))
+		nValue = val[szKey].GetInt();
+	else
+		fKeyExists = false;
+	return (fKeyExists);
+}
+//-----------------------------------------------------------------------------
+
 bool TPitayaInterface::HandleSampling (const Value &valSampling, std::string &strReply)
 {
 	bool f = true;
@@ -279,16 +304,36 @@ bool TPitayaInterface::HandleSampling (const Value &valSampling, std::string &st
 	if (valSampling.HasMember (RPSU_COMMAND)) {
 		szCommand = valSampling[RPSU_COMMAND].GetString();
 		if (strcmp(szCommand, RPSU_START) == 0) {
+			StartSampling (valSampling, strReply);
+/*
 			if (m_pSendThread == NULL) {
 				SetQuitSender (false);
 				m_pSendThread = new thread (BinSender, this);
 			}
+*/
 		}
 		else if ((strcmp(szCommand, RPSU_STOP)) == 0) {
 			SetQuitSender (true);
 			m_pSendThread->join();
 			delete m_pSendThread;
 			m_pSendThread = NULL;
+		}
+	}
+	return (f);
+}
+//-----------------------------------------------------------------------------
+
+bool TPitayaInterface::StartSampling (const Value &valSampling, std::string &strReply)
+{
+	int nSamplesCount;
+	bool f;
+
+	if ((f = GetJsonInt(valSampling, RPSU_SAMPLES, nSamplesCount)) == true) {
+		m_nSamples = nSamplesCount;
+		SetQuitSender (false);
+		if (m_pSendThread == NULL) {
+			m_pSendThread = new thread (BinSender, this);
+			strReply = RPSU_START;
 		}
 	}
 	return (f);
@@ -335,5 +380,11 @@ int TPitayaInterface::GetSampleLength() const
 int TPitayaInterface::GetReturnPort() const
 {
 	return (m_nReturnPort);
+}
+//-----------------------------------------------------------------------------
+
+void TPitayaInterface::SetClientIP (const char *szClientIP)
+{
+	m_strClient = std::string(szClientIP);
 }
 //-----------------------------------------------------------------------------
