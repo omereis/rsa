@@ -34,51 +34,15 @@ int GetCliPort (int argc, char const *argv[])
 		nPort = DEFAULT_PORT;
 	return (nPort);
 }
-/*
 //-----------------------------------------------------------------------------
 
-int OpenSocket (int nPort)
-{
-	struct sockaddr_in address; 
-	int opt = 1; 
-	int nServerFd;
-
-	// Creating socket file descriptor 
-	if ((nServerFd = socket(AF_INET, SOCK_STREAM, 0)) == 0) { 
-		perror("socket failed"); 
-		exit(EXIT_FAILURE); 
-	} 
-
-	// Forcefully attaching socket to the port
-	if (setsockopt(nServerFd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))  { 
-		perror("setsockopt"); 
-		exit(EXIT_FAILURE); 
-	} 
-	address.sin_family = AF_INET; 
-	address.sin_addr.s_addr = INADDR_ANY; 
-	address.sin_port = htons(nPort); 
-
-	// Forcefully attaching socket to the port
-	if (bind(nServerFd, (struct sockaddr *)&address, sizeof(address)) < 0) { 
-		perror("bind failed"); 
-		exit(EXIT_FAILURE); 
-	} 
-	if (listen(nServerFd, 3) < 0)  { 
-		perror("listen"); 
-		exit(EXIT_FAILURE); 
-	}
-	return (nServerFd);
-}
-*/
-//-----------------------------------------------------------------------------
-
-bool ActOnCommand (const std::string &strJson, Document &docCommand, const char *szClientIP, string &strReply)
+bool ActOnCommand (const std::string &strJson, TPitayaInterface &pi, Document &docCommand, const char *szClientIP, string &strReply)
 {
 	bool f;
 
 	try {
 		assert(docCommand.IsObject());
-		TPitayaInterface pi(szClientIP);
+		//TPitayaInterface pi(szClientIP);
 		f = pi.FollowCommand (docCommand, strReply);
 	}
 	catch (exception &e) {
@@ -168,6 +132,7 @@ int main(int argc, char const *argv[])
 	std::thread threadSample (SampleInput);
 	string strReply;
 	Document document;  // Default template parameter uses UTF8 and MemoryPoolAllocator.
+	TPitayaInterface pi;
 
 	nPort = GetCliPort (argc, argv);
 	server_fd = OpenServerSocket (nPort);
@@ -190,9 +155,12 @@ int main(int argc, char const *argv[])
 		try {
 			string strMessage (buffer);
 			string strJson = ToLower (strMessage);
-			if ((fParseError = document.Parse(strJson.c_str()).HasParseError()) == false)
-				if (!ActOnCommand (strJson, document, szClientIP, strReply))
+			if ((fParseError = document.Parse(strJson.c_str()).HasParseError()) == false) {
+				pi.SetClientIP (szClientIP);
+				//TPitayaInterface pi(szClientIP);
+				if (!ActOnCommand (strJson, pi, document, szClientIP, strReply))
 					valread = 0;
+			}
 		}
 		catch (std::exception &e) {
 			fprintf (stderr, "Parsing error:\n%s\n", e.what());
