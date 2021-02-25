@@ -11,6 +11,9 @@ m i s c . c p p
 #include <rapidjson/writer.h>
 #include <cstdio>
 
+using namespace rapidjson;
+using namespace std;
+
 //-----------------------------------------------------------------------------
 bool ReadFile (const std::string &strFileName, std::string &strContent)
 {
@@ -107,5 +110,40 @@ int OpenServerSocket (int nPort)
 		exit(EXIT_FAILURE); 
 	}
 	return (nServerFd);
+}
+//-----------------------------------------------------------------------------
+/*
+#include <ctype.h>
+static bool FindJsonStart (const char *sz, int &iStart)
+{
+	int n;
+	
+	iStart = -1;
+	for (n=0 ; (n < nBufLen) && (iStart < 0) ; n++) {
+		if (!isblank(sz[n])) {
+			iStart
+			if (sz == '{')
+				iStart = n;
+			else
+				break;
+		}
+	}
+	return (iStart >= 0);
+}
+*/
+//-----------------------------------------------------------------------------
+#include <strings.h>
+bool IsJsonQuit (const char *szJson)
+{
+	Document document;
+	const char *szQuit=NULL;
+	bool fQuit=false;
+	
+	if (document.Parse(szJson).HasParseError() == false)
+		if (document.HasMember("quit"))
+			szQuit = document["quit"].GetString();
+	if (szQuit != NULL)
+		fQuit = (strcasecmp (szQuit, "quit") == 0);
+	return (fQuit);
 }
 //-----------------------------------------------------------------------------

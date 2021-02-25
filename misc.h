@@ -17,6 +17,7 @@ bool ReadFile (const std::string &strFileName, std::string &strContent);
 bool ReadPitayaSetup (Document &docSetup);
 bool WriteJson (Document &doc);
 int OpenServerSocket (int nPort);
+bool IsJsonQuit (const char *sz);
 
 //-----------------------------------------------------------------------------
 #endif //__MISC_H_INC
