@@ -95,6 +95,7 @@ void ReadSamples (int nPort, int nSampleLen)
 	int server_fd, new_socket, valread;
 	struct sockaddr_in address;
 	int addrlen = sizeof(address);
+	int opt = 1; 
 	int nBufferSize = nSampleLen * sizeof (float);
 	char *buffer = new char [nSampleLen * sizeof (float)];
 	bool fQuit;
@@ -103,36 +104,58 @@ void ReadSamples (int nPort, int nSampleLen)
 	fQuit = s_fQuitSender = false;
 	mutexQuitSender.unlock();
 
+		//fd_set set;
+		//struct timeval timeout;
+		//FD_ZERO(&set); /* clear the set */
+		//FD_SET(new_socket, &set); /* add our file descriptor to the set */
+		//timeout.tv_sec = 1;
+		//timeout.tv_usec = 0;
+		//int rv = select(new_socket, &set, NULL, NULL, &timeout);
+	server_fd = OpenServerSocket (nPort);
 	while (!fQuit) {
-		server_fd = OpenServerSocket (nPort);
 		if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0){ 
 			perror("accept");
 			exit(EXIT_FAILURE);
 		}
 		memset (buffer, 0, nBufferSize);
 		valread = read(new_socket, buffer, nBufferSize);
+
 		if (valread > 0) {
-			float *pNum = (float*) buffer;
-			TFloatVector vf;
-			int n=0;
-			while (n < valread) {
-				vf.push_back (*pNum);
-				pNum ++;
-				n += sizeof (*pNum);
-			}
-			if (vf.size() > 0) {
-				TFloatVector::iterator i;
-				std::string strFileName = GetResultFileName();
-				//FILE *file = fopen ("remote.csv", "w+");
-				FILE *file = fopen (strFileName.c_str(), "w+");
-				for (i=vf.begin() ; i != vf.end() ; i++)
-					fprintf (file, "%g\n", *i);
-				fclose (file);
+/*
+			FILE *f = fopen ("debug.txt", "a+");
+			fprintf (f, "\n%s\n", buffer);
+			fclose (f);
+*/
+			if (IsJsonQuit (buffer))
+				fQuit = true;
+			else {
+				float *pNum = (float*) buffer;
+				TFloatVector vf;
+				int n=0;
+				while (n < valread) {
+					vf.push_back (*pNum);
+					pNum ++;
+					n += sizeof (*pNum);
+				}
+				if (vf.size() > 0) {
+					TFloatVector::iterator i;
+					std::string strFileName = GetResultFileName();
+					FILE *file = fopen (strFileName.c_str(), "w+");
+					for (i=vf.begin() ; i != vf.end() ; i++)
+						fprintf (file, "%g\n", *i);
+					fclose (file);
+				}
 			}
 		}
-		mutexQuitSender.lock();
-		fQuit = s_fQuitSender;
-		mutexQuitSender.unlock();
+		else {
+			valread = 0;
+		}
+		send (new_socket, "OK", 2, 0);
+		if (!fQuit) {
+			mutexQuitSender.lock();
+			fQuit = s_fQuitSender;
+			mutexQuitSender.unlock();
+		}
 	}
 
 	delete[] buffer;
@@ -164,10 +187,9 @@ int SendData (const std::string &strAddress, int nPort, const std::string &strDa
 		printf("\nConnection Failed \n");
 		return -1;
 	}
-	//send(sock , hello , strlen(hello) , 0 );
 	send (sock, strData.c_str(), strData.size(), 0);
 	printf("Message sent: '%s'\n", strData.c_str());
-	valread = read( sock , buffer, COMM_BUFFER_LENGTH);
+	//valread = read( sock , buffer, COMM_BUFFER_LENGTH);
 	printf("Server answer is: '%s'\n", buffer);
 }
 
@@ -251,16 +273,19 @@ int main(int argc, char const *argv[])
 	bool fToQuit;
 
 	if (GetCliAddressPort (argc, argv, nPort, strAddress, strErr)) {
-		thread thReadSamples (ReadSamples, nPort + 1, 6250);
+		thread *pthReadSamples = new thread (ReadSamples, nPort + 1, 6250);
 		printf ("Connecting to server at %s:%d\n", strAddress.c_str(), nPort);
 		do {
 			strData = GetDataToSend(fToQuit);
 			SendData (strAddress, nPort, strData);
 		} while (fToQuit == false);
+		SendData ("127.0.0.1", nPort+1, strData);
 		mutexQuitSender.lock();
 		s_fQuitSender = true;
 		mutexQuitSender.unlock();
-		thReadSamples.join();
+		if (pthReadSamples->joinable())
+			pthReadSamples->join();
+			//delete pthReadSamples;
 	}
 	return 0;
 } 
