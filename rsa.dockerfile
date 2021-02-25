@@ -44,4 +44,5 @@ RUN ln -s $HOME/rp_signal.dat $HOME/signal.dat
 #RUN cd $HOME &&\
 #	make
 
-# EXPOSE 6000
+EXPOSE 5500
+EXPOSE 5501
