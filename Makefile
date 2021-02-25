@@ -35,8 +35,11 @@ rp_server.o : rp_server.cpp $(INCLUDES) Makefile
 rp_server: $(OBJECTS)
 	$(CPP) -g $(OBJECTS) $(LDFLAGS) -o $@
 
-rp_client: rp_client.cpp misc.cpp $(INCLUDES)
+rp_client: rp_client.cpp misc.cpp $(INCLUDES) Makefile
 	$(CPP) $(CFLAGS) $(LDFLAGS) misc.o -o $@ $<
 clean:
 	rm *.o
+
+clean_all:
+	rm *.o rp_client rp_server
 
