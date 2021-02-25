@@ -1,9 +1,7 @@
 {
-    "sample" : {
-        "count" : 10,
-        "reply_socket" : 5501,
-        "every" : 1
-    }
+	"sampling" : {
+		"command" : "start"
+	}
 }
 
 
