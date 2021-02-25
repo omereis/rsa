@@ -140,9 +140,12 @@ void ReadSamples (int nPort, int nSampleLen)
 				if (vf.size() > 0) {
 					TFloatVector::iterator i;
 					std::string strFileName = GetResultFileName();
-					FILE *file = fopen (strFileName.c_str(), "w+");
+					FILE *file = fopen ("remote_data.txt", "a+");
+					//FILE *file = fopen (strFileName.c_str(), "w+");
+					fprintf (file, "-----------------------------------------------------\n");
 					for (i=vf.begin() ; i != vf.end() ; i++)
 						fprintf (file, "%g\n", *i);
+					fprintf (file, "-----------------------------------------------------\n");
 					fclose (file);
 				}
 			}
