@@ -48,8 +48,10 @@ void TRedPitayaTrigger::Clear ()
 {
 	SetLevel (5e-3);
 	SetDelay (100e6);
-	SetInput ("in1");
-	SetDirection ("rise");
+	m_source = RP_TRIG_SRC_CHA_PE;
+	m_channel = RP_CH_1;
+	//SetInput ("in1");
+	//SetDirection ("rise");
 }
 //-----------------------------------------------------------------------------
 
@@ -156,6 +158,30 @@ void TRedPitayaTrigger::GetJson (Json::Value &valTrigger)
 	//valTrigger.Clear();
 	valTrigger[RPSU_LEVEL] = GetLevel();
 	valTrigger[RPSU_DELAY] = GetDelay();
+	valTrigger[RPSU_SOURCE] = GetInput();
+	valTrigger[RPSU_DIR] = GetDirection ();
 }
+//-----------------------------------------------------------------------------
 
+bool TRedPitayaTrigger::SetTrigger (const Json::Value &valTrigger)
+{
+	bool f;
+
+	try {
+		if (!valTrigger[RPSU_LEVEL].isNull())
+			SetLevel(valTrigger[RPSU_LEVEL].asFloat());
+		if (!valTrigger[RPSU_DELAY].isNull())
+			SetDelay (valTrigger[RPSU_DELAY].asFloat());
+		if (!valTrigger[RPSU_SOURCE].isNull())
+			SetInput(valTrigger[RPSU_SOURCE].asString());
+		if (!valTrigger[RPSU_DIR].isNull())
+			SetDirection (valTrigger[RPSU_DIR].asString());
+		f = true;
+	}
+	catch (std::exception &e) {
+		f = false;
+		fprintf (stderr, "Runtime error in 'TRedPitayaTrigger::SetJson':\n%s\n", e.what());
+	}
+	return (f);
+}
 //-----------------------------------------------------------------------------

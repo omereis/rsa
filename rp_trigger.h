@@ -20,6 +20,7 @@ public:
 	//bool LoadFromJson (const Value &valTrigger);
 	bool LoadFromJson (const std::string &strFile);
 	bool SaveToJson  (const std::string &strFile);
+	bool SetTrigger (const Json::Value &valTrigger);
 	//bool  JsonTrigger (Document &docTrigger);
 	void GetJson (Json::Value &valTrigger);
 
@@ -39,8 +40,8 @@ protected:
 private:
 	float m_fLevel;
 	float m_fDelay;
-	std::string m_strDir;
-	std::string m_strSource;
+	//std::string m_strDir;
+	//std::string m_strSource;
 	rp_channel_t m_channel;
 	rp_acq_trig_src_t m_source;
 };

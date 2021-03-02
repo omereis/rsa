@@ -27,14 +27,15 @@ bool ReadPitayaSetup (std::string &strJson, Json::Value &valSetup);
 int OpenServerSocket (int nPort);
 bool IsJsonQuit (const char *sz);
 std::string ToLower (const std::string &str);
-std::string TriggerSourceName (const rp_acq_trig_src_t &m_source);
-bool SetTriggerFromName (const std::string &strSourceIn, const std::string &strSourceDir, rp_acq_trig_src_t & m_source);
-std::string TriggerDirName (const rp_acq_trig_src_t &m_source);
+std::string TriggerSourceName (const rp_acq_trig_src_t &source);
+bool SetTriggerFromName (const std::string &strSourceIn, const std::string &strSourceDir, rp_acq_trig_src_t & source);
+std::string TriggerDirName (const rp_acq_trig_src_t &source);
 std::string& ltrim(std::string& str, const std::string& chars = "\t\n\v\f\r ");
 std::string& rtrim(std::string& str, const std::string& chars = "\t\n\v\f\r ");
 std::string& trim(std::string& str, const std::string& chars = "\t\n\v\f\r ");
 
 bool GetJsonInt (const Json::Value &val, const std::string &strKey, int &nValue);
 bool ReadPitayaSetup (Json::Value &valSetup);
+std::string StringifyJson (const Json::Value &val);
 //-----------------------------------------------------------------------------
 #endif //__MISC_H_INC

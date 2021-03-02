@@ -19,6 +19,7 @@ public:
 	//bool GetTrigger (Document &docTrigger);
 	//bool GetSetup (const Value &valSetup, std::string &strReply);
 	void GetTrigger (Json::Value &jvalSetup);
+	bool SetTrigger (const Json::Value &jsonTrigger, std::string &strReply);
 protected:
 private:
 	TRedPitayaTrigger m_trigger;

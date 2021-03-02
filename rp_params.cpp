@@ -94,3 +94,16 @@ void TRedPitayaParams::GetTrigger (Json::Value &jvalSetup)
 	m_trigger.GetJson (jvalTrigger);
 	jvalSetup["trigger"] = jvalTrigger;
 }
+//-----------------------------------------------------------------------------
+
+bool TRedPitayaParams::SetTrigger (const Json::Value &jsonTrigger, std::string &strReply)
+{
+	bool f;
+	Json::Value json;
+	
+	if ((f= m_trigger.SetTrigger (jsonTrigger)) == true) {
+		GetTrigger (json);
+		strReply = StringifyJson (json);
+	}
+	return (f);
+}

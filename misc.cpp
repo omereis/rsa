@@ -181,29 +181,29 @@ string ToLower (const std::string &str)
 }
 //-----------------------------------------------------------------------------
 
-std::string TriggerSourceName (const rp_acq_trig_src_t &m_source)
+std::string TriggerSourceName (const rp_acq_trig_src_t &source)
 {
 	std::string strName;
 	
-    if (m_source == RP_TRIG_SRC_DISABLED)
+    if (source == RP_TRIG_SRC_DISABLED)
 		strName = "disabled";
-    else if (m_source == RP_TRIG_SRC_NOW)
+    else if (source == RP_TRIG_SRC_NOW)
 		strName = "now";
-    else if (m_source == RP_TRIG_SRC_CHA_PE)
+    else if (source == RP_TRIG_SRC_CHA_PE)
 		strName = "in1";
-    else if (m_source == RP_TRIG_SRC_CHA_NE)
+    else if (source == RP_TRIG_SRC_CHA_NE)
 		strName = "in1";
-    else if (m_source == RP_TRIG_SRC_CHB_PE)
+    else if (source == RP_TRIG_SRC_CHB_PE)
 		strName = "in2";
-    else if (m_source == RP_TRIG_SRC_CHB_NE)
+    else if (source == RP_TRIG_SRC_CHB_NE)
 		strName = "in2";
-    else if (m_source == RP_TRIG_SRC_EXT_PE)
+    else if (source == RP_TRIG_SRC_EXT_PE)
 		strName = "external";
-    else if (m_source == RP_TRIG_SRC_EXT_NE)
+    else if (source == RP_TRIG_SRC_EXT_NE)
 		strName = "external";
-    else if (m_source == RP_TRIG_SRC_AWG_PE)
+    else if (source == RP_TRIG_SRC_AWG_PE)
 		strName = "generator";
-    else if (m_source == RP_TRIG_SRC_AWG_NE)
+    else if (source == RP_TRIG_SRC_AWG_NE)
 		strName = "generator";
 	else
 		strName = "unknown";
@@ -211,29 +211,29 @@ std::string TriggerSourceName (const rp_acq_trig_src_t &m_source)
 }
 //-----------------------------------------------------------------------------
 
-std::string TriggerDirName (const rp_acq_trig_src_t &m_source)
+std::string TriggerDirName (const rp_acq_trig_src_t &source)
 {
 	std::string strName;
 	
-    if (m_source == RP_TRIG_SRC_DISABLED)
+    if (source == RP_TRIG_SRC_DISABLED)
 		strName = "disabled";
-    else if (m_source == RP_TRIG_SRC_NOW)
+    else if (source == RP_TRIG_SRC_NOW)
 		strName = "now";
-    else if (m_source == RP_TRIG_SRC_CHA_PE)
+    else if (source == RP_TRIG_SRC_CHA_PE)
 		strName = "rise";
-    else if (m_source == RP_TRIG_SRC_CHA_NE)
+    else if (source == RP_TRIG_SRC_CHA_NE)
 		strName = "fall";
-    else if (m_source == RP_TRIG_SRC_CHB_PE)
+    else if (source == RP_TRIG_SRC_CHB_PE)
 		strName = "rise";
-    else if (m_source == RP_TRIG_SRC_CHB_NE)
+    else if (source == RP_TRIG_SRC_CHB_NE)
 		strName = "fall";
-    else if (m_source == RP_TRIG_SRC_EXT_PE)
+    else if (source == RP_TRIG_SRC_EXT_PE)
 		strName = "rise";
-    else if (m_source == RP_TRIG_SRC_EXT_NE)
+    else if (source == RP_TRIG_SRC_EXT_NE)
 		strName = "fall";
-    else if (m_source == RP_TRIG_SRC_AWG_PE)
+    else if (source == RP_TRIG_SRC_AWG_PE)
 		strName = "rise";
-    else if (m_source == RP_TRIG_SRC_AWG_NE)
+    else if (source == RP_TRIG_SRC_AWG_NE)
 		strName = "fall";
 	else
 		strName = "unknown";
@@ -241,7 +241,7 @@ std::string TriggerDirName (const rp_acq_trig_src_t &m_source)
 }
 //-----------------------------------------------------------------------------
 
-bool SetTriggerFromName (const std::string &strSourceIn, const std::string &strSourceDir, rp_acq_trig_src_t & m_source)
+bool SetTriggerFromName (const std::string &strSourceIn, const std::string &strSourceDir, rp_acq_trig_src_t & source)
 {
 	std::string strIn = ToLower(strSourceIn);
 	std::string strDir = ToLower (strSourceDir);
@@ -249,22 +249,22 @@ bool SetTriggerFromName (const std::string &strSourceIn, const std::string &strS
 	
 	if (strIn == "in1") {
 		if (strDir == "rise")
-			m_source = RP_TRIG_SRC_CHA_PE;
+			source = RP_TRIG_SRC_CHA_PE;
 		else if (strDir == "fall")
-			m_source = RP_TRIG_SRC_CHA_NE;
+			source = RP_TRIG_SRC_CHA_NE;
 		else
 			fAssign = false;
 	}
 	else if (strIn == "in2") {
 		if (strDir == "rise")
-			m_source = RP_TRIG_SRC_CHB_PE;
+			source = RP_TRIG_SRC_CHB_PE;
 		else if (strDir == "fall")
-			m_source = RP_TRIG_SRC_CHB_NE;
+			source = RP_TRIG_SRC_CHB_NE;
 		else
 			fAssign = false;
 	}
 	else if (strIn == "now")
-		m_source = RP_TRIG_SRC_NOW;
+		source = RP_TRIG_SRC_NOW;
 	else
 		fAssign = false;
 	return (fAssign);
@@ -311,5 +311,15 @@ bool GetJsonInt (const Json::Value &val, const std::string &strKey, int &nValue)
 	else
 		fKeyExists = false;
 	return (fKeyExists);
+}
+//-----------------------------------------------------------------------------
+
+std::string StringifyJson (const Json::Value &val)
+{
+	std::string strJson;
+	Json::FastWriter fastWriter;
+	
+	strJson = fastWriter.write(val);
+	return (strJson);
 }
 //-----------------------------------------------------------------------------

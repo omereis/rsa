@@ -27,7 +27,7 @@
 #include "const_strings.h"
 #include "rp_signal.h"
 
-using namespace rapidjson;
+//using namespace rapidjson;
 using namespace std;
 //-----------------------------------------------------------------------------
 std::mutex mutexSender;
@@ -155,8 +155,11 @@ bool TPitayaInterface::FollowCommand (Json::Value &root, std::string &strReply)
 	
 	try {
 		strReply = "";
-		if (!root[RPSU_SETUP].isNull())
+		if (!root[RPSU_GET_TRIGGER].isNull())
 			f = GetTriggerString (strReply);
+		else if (!root[RPSU_SET_TRIGGER].isNull())
+			f = m_rp_params.SetTrigger (root[RPSU_SET_TRIGGER], strReply);
+			f = SetTrigger (root[RPSU_SET_TRIGGER], strReply);
 	}
 	catch (exception &e) {
 		strReply = e.what();
@@ -165,31 +168,6 @@ bool TPitayaInterface::FollowCommand (Json::Value &root, std::string &strReply)
 	return (f);
 }
 /*
-bool TPitayaInterface::FollowCommand (const Document &docCommand, std::string &strReply)
-{
-	string strCommand;
-	bool f = false;
-	
-	try {
-		if (docCommand.HasMember (RPSU_SET_TRIGGER)) {
-			const Value &valTrigger = docCommand[RPSU_SET_TRIGGER];
-			if ((f = SetTrigger(valTrigger, strReply)) == true)
-				f = GetTriggerString (strReply);
-		}
-		if (docCommand.HasMember (RPSU_SETUP)) {
-			f = m_rp_params.GetSetup (docCommand[RPSU_SETUP], strReply);
-		//if (docCommand.HasMember (RPSU_GET_TRIGGER)) {
-			//f = GetTriggerString (strReply);
-		}
-		if (docCommand.HasMember (RPSU_SAMPLING)) {
-			f = HandleSampling (docCommand[RPSU_SAMPLING], strReply);
-		}
-	}
-	catch (exception &e) {
-			f = false;
-	}
-	return (f);
-}
 */
 //-----------------------------------------------------------------------------
 
@@ -247,15 +225,15 @@ bool TPitayaInterface::ExtractValueReal (const Value &val, double &dValue)
 */
 //-----------------------------------------------------------------------------
 
-bool TPitayaInterface::ExtractValueString (const Value &val, std::string &str)
-{
-	bool fRead = true;
+//bool TPitayaInterface::ExtractValueString (const Value &val, std::string &str)
+//{
+	//bool fRead = true;
 
-	str = "";
-	if (val.IsString())
-		str = val.GetString();
-	return (fRead);
-}
+	//str = "";
+	//if (val.IsString())
+		//str = val.GetString();
+	//return (fRead);
+//}
 //-----------------------------------------------------------------------------
 
 /*
@@ -290,14 +268,6 @@ bool TPitayaInterface::UpdateTriggerItem (const char *szTriggerItem, const std::
 	return (fUpdate);
 }
 */
-std::string StringifyJson (const Json::Value &val)
-{
-	std::string strJson;
-	Json::FastWriter fastWriter;
-	
-	strJson = fastWriter.write(val);
-	return (strJson);
-}
 //-----------------------------------------------------------------------------
 
 bool TPitayaInterface::GetTriggerString (std::string &strReply)
@@ -317,6 +287,12 @@ bool TPitayaInterface::GetTriggerString (std::string &strReply)
 		fRead = false;
 	}
 	return (fRead);
+}
+//-----------------------------------------------------------------------------
+
+bool TPitayaInterface::SetTrigger (Json::Value &jsonTrigger, std::string &strReply)
+{
+	return (true);
 }
 /*
 bool TPitayaInterface::GetTriggerString (std::string &strReply)

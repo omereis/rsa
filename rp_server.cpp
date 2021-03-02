@@ -16,15 +16,15 @@
 #include <arpa/inet.h>
 #include <string.h> 
 
-#include "rapidjson/document.h"     // rapidjson's DOM-style API
-#include "rapidjson/prettywriter.h" // for stringify JSON
+//#include "rapidjson/document.h"     // rapidjson's DOM-style API
+//#include "rapidjson/prettywriter.h" // for stringify JSON
 
 #include "pitaya_interface.h"
 
 #include "rsa.h"
 #include "misc.h"
 
-using namespace rapidjson;
+//using namespace rapidjson;
 using namespace std;
 
 //-----------------------------------------------------------------------------
