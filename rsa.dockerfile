@@ -35,6 +35,7 @@ RUN cp /home/oe/rp.h /usr/include/redpitaya/include/
 
 RUN mkdir -p /opt/redpitaya/include/
 RUN cp /home/oe/rp.h /opt/redpitaya/include/
+RUN apt install -y libjsoncpp-dev
 
 ENV CPLUS_INCLUDE_PATH = $CPLUS_INCLUDE_PATH:/opt
 ENV C_INCLUDE_PATH = $C_INCLUDE_PATH:/opt
