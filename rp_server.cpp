@@ -1,3 +1,7 @@
+/******************************************************************************\
+|                               rp_server.cpp                                  |
+\******************************************************************************/
+
 // Server side C/C++ program to demonstrate Socket programming 
 #include <mutex>
 #include <thread>
@@ -36,30 +40,22 @@ int GetCliPort (int argc, char const *argv[])
 }
 //-----------------------------------------------------------------------------
 
-bool ActOnCommand (const std::string &strJson, TPitayaInterface &pi, Document &docCommand, const char *szClientIP, string &strReply)
+bool ActOnCommand (const std::string &strJson, TPitayaInterface &pi, Json::Value &root, const char *szClientIP, string &strReply)
+//bool ActOnCommand (const std::string &strJson, TPitayaInterface &pi, Document &docCommand, const char *szClientIP, string &strReply)
 {
 	bool f;
 
 	try {
-		assert(docCommand.IsObject());
+		//assert(docCommand.IsObject());
 		//TPitayaInterface pi(szClientIP);
-		f = pi.FollowCommand (docCommand, strReply);
+		f = pi.FollowCommand (root, strReply);
+		//f = pi.FollowCommand (docCommand, strReply);
 	}
 	catch (exception &e) {
 		printf ("ActOnCommand Runtime error:\n%s\n", e.what());
 		f = false;
 	}
 	return (f);
-}
-//-----------------------------------------------------------------------------
-
-string ToLower (const std::string &str)
-{
-	string strLower;
-
-	for (int n=0 ; n < str.size() ; n++)
-		strLower += tolower(str[n]);
-	return (strLower);
 }
 //-----------------------------------------------------------------------------
 int SampleSignal (float *afSignals, int nLength)
@@ -131,8 +127,10 @@ int main(int argc, char const *argv[])
 	std::mutex mutex;
 	std::thread threadSample (SampleInput);
 	string strReply;
-	Document document;  // Default template parameter uses UTF8 and MemoryPoolAllocator.
+	//Document document;  // Default template parameter uses UTF8 and MemoryPoolAllocator.
 	TPitayaInterface pi;
+	Json::Value root;
+	Json::Reader reader;
 
 	nPort = GetCliPort (argc, argv);
 	server_fd = OpenServerSocket (nPort);
@@ -140,6 +138,7 @@ int main(int argc, char const *argv[])
 
 	int n=1;
 	g_fStop = false;
+	pi.LoadSetup();
 	do {
 		fprintf (stderr, "Waiting at port %d\n", nPort);
 		if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0){ 
@@ -155,12 +154,18 @@ int main(int argc, char const *argv[])
 		try {
 			string strMessage (buffer);
 			string strJson = ToLower (strMessage);
+			if (reader.parse (strJson, root)) {
+				if (!ActOnCommand (strJson, pi, root, szClientIP, strReply))
+					valread = 0;
+			}
+/*
 			if ((fParseError = document.Parse(strJson.c_str()).HasParseError()) == false) {
 				pi.SetClientIP (szClientIP);
 				//TPitayaInterface pi(szClientIP);
 				if (!ActOnCommand (strJson, pi, document, szClientIP, strReply))
 					valread = 0;
 			}
+*/
 		}
 		catch (std::exception &e) {
 			fprintf (stderr, "Parsing error:\n%s\n", e.what());

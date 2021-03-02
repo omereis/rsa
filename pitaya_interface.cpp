@@ -14,9 +14,11 @@
 
 #include <arpa/inet.h>
 
-#include "rapidjson/document.h"     // rapidjson's DOM-style API
-#include "rapidjson/prettywriter.h" // for stringify JSON
+//#include "rapidjson/document.h"     // rapidjson's DOM-style API
+//#include "rapidjson/prettywriter.h" // for stringify JSON
 #include "redpitaya/include/rp.h"
+
+#include "jsoncpp/json/json.h"
 
 #include "pitaya_interface.h"
 
@@ -83,17 +85,19 @@ void BinSender (TPitayaInterface *pInterface)
 	int nSamplesSend=0;
 	
 	while (!fQuit) {
-		std::this_thread::sleep_for(2000ms);
 		float *afSamples = new float [pInterface->GetSampleLength()];
 		if (GetSample (afSamples, pInterface->GetSampleLength()) > 0)
 			if (!SendSamples (afSamples, pInterface->GetSampleLength(), pInterface->GetClientIP(), pInterface->GetReturnPort()))
 				fQuit = true;
 			else {
-				nSamplesSend++;
-				if (nSamplesSend >= pInterface->GetSamplesCount())
-					fQuit = true;
+				if (pInterface->GetSamplesCount() > 0) {
+					nSamplesSend++;
+					if (nSamplesSend >= pInterface->GetSamplesCount())
+						fQuit = true;
+				}
 			}
 		delete[] afSamples;
+		std::this_thread::sleep_for(2000ms);
 		if (!fQuit) {
 			mutexSender.lock();
 			fQuit = s_fStopSender;
@@ -108,6 +112,7 @@ void BinSender (TPitayaInterface *pInterface)
 
 TPitayaInterface::TPitayaInterface ()
 {
+	m_rp_params.Clear ();
 	SetDefaultParams ();
 	m_pSendThread = NULL;
 }
@@ -143,6 +148,23 @@ void TPitayaInterface::SetDefaultParams ()
 }
 //-----------------------------------------------------------------------------
 
+bool TPitayaInterface::FollowCommand (Json::Value &root, std::string &strReply)
+{
+	string strCommand;
+	bool f = false;
+	
+	try {
+		strReply = "";
+		if (!root[RPSU_SETUP].isNull())
+			f = GetTriggerString (strReply);
+	}
+	catch (exception &e) {
+		strReply = e.what();
+		f = false;
+	}
+	return (f);
+}
+/*
 bool TPitayaInterface::FollowCommand (const Document &docCommand, std::string &strReply)
 {
 	string strCommand;
@@ -154,8 +176,10 @@ bool TPitayaInterface::FollowCommand (const Document &docCommand, std::string &s
 			if ((f = SetTrigger(valTrigger, strReply)) == true)
 				f = GetTriggerString (strReply);
 		}
-		if (docCommand.HasMember (RPSU_GET_TRIGGER)) {
-			f = GetTriggerString (strReply);
+		if (docCommand.HasMember (RPSU_SETUP)) {
+			f = m_rp_params.GetSetup (docCommand[RPSU_SETUP], strReply);
+		//if (docCommand.HasMember (RPSU_GET_TRIGGER)) {
+			//f = GetTriggerString (strReply);
 		}
 		if (docCommand.HasMember (RPSU_SAMPLING)) {
 			f = HandleSampling (docCommand[RPSU_SAMPLING], strReply);
@@ -166,8 +190,10 @@ bool TPitayaInterface::FollowCommand (const Document &docCommand, std::string &s
 	}
 	return (f);
 }
+*/
 //-----------------------------------------------------------------------------
 
+/*
 bool TPitayaInterface::SetTrigger (const Value &valTrigger, string &strReply)
 {
 	std::string str;
@@ -218,6 +244,7 @@ bool TPitayaInterface::ExtractValueReal (const Value &val, double &dValue)
 		fRead = false;
 	return (fRead);
 }
+*/
 //-----------------------------------------------------------------------------
 
 bool TPitayaInterface::ExtractValueString (const Value &val, std::string &str)
@@ -231,6 +258,7 @@ bool TPitayaInterface::ExtractValueString (const Value &val, std::string &str)
 }
 //-----------------------------------------------------------------------------
 
+/*
 bool TPitayaInterface::UpdateTriggerItem (const char *szTriggerItem, const double &dValue)
 {
 	Document docSetup;
@@ -244,8 +272,10 @@ bool TPitayaInterface::UpdateTriggerItem (const char *szTriggerItem, const doubl
 	}
 	return (fUpdate);
 }
+*/
 //-----------------------------------------------------------------------------
 
+/*
 bool TPitayaInterface::UpdateTriggerItem (const char *szTriggerItem, const std::string &str)
 {
 	Document docSetup;
@@ -259,8 +289,36 @@ bool TPitayaInterface::UpdateTriggerItem (const char *szTriggerItem, const std::
 	}
 	return (fUpdate);
 }
+*/
+std::string StringifyJson (const Json::Value &val)
+{
+	std::string strJson;
+	Json::FastWriter fastWriter;
+	
+	strJson = fastWriter.write(val);
+	return (strJson);
+}
 //-----------------------------------------------------------------------------
 
+bool TPitayaInterface::GetTriggerString (std::string &strReply)
+{
+	Json::Value jvalTrigger, valRedPitayaSetup;
+	bool fRead = false;
+
+	try {
+	//if (ReadPitayaSetup (valRedPitayaSetup)) {
+		m_rp_params.GetTrigger (jvalTrigger);
+		strReply = StringifyJson (jvalTrigger);//std::string(szJson);
+		fRead = true;
+	//}
+	}
+	catch (std::exception &e) {
+		fprintf (stderr, "Runtime error in GetTriggerString:\n%s\n", e.what());
+		fRead = false;
+	}
+	return (fRead);
+}
+/*
 bool TPitayaInterface::GetTriggerString (std::string &strReply)
 {
 	Document docSetup;
@@ -277,8 +335,10 @@ bool TPitayaInterface::GetTriggerString (std::string &strReply)
 	}
 	return (fRead);
 }
+}
+*/
 //-----------------------------------------------------------------------------
-
+/*
 bool GetJsonInt (const Value &val, const std::string &strKey, int &nValue)
 {
 	const char *szKey = strKey.c_str();
@@ -290,12 +350,50 @@ bool GetJsonInt (const Value &val, const std::string &strKey, int &nValue)
 		fKeyExists = false;
 	return (fKeyExists);
 }
+*/
 //-----------------------------------------------------------------------------
 
+/*
+bool TPitayaInterface::HandleSampling (const Json::Value &valSampling, std::string &strReply)
+{
+	bool f = true;
+	const char *szCommand;
+	Document docTrigger;
+
+	if (!valSampling[RPSU_OUTPUT].isNull())
+		f = HandleSamplingParams (valSampling[RPSU_OUTPUT], strReply);
+	if (!valSampling[RPSU_RET_PORT].isNull())
+		m_nReturnPort = valSampling[RPSU_RET_PORT].asInt();
+	if (!valSampling[RPSU_COMMAND].isNull()) {
+		szCommand = valSampling[RPSU_COMMAND].asString();
+		if (strcmp(szCommand, RPSU_START) == 0) {
+			StartSampling (valSampling, strReply);
+		}
+		else if ((strcmp(szCommand, RPSU_STOP)) == 0) {
+			SetQuitSender (true);
+			m_pSendThread->join();
+			delete m_pSendThread;
+			m_pSendThread = NULL;
+		}
+		else if (strcmp (szCommand, RPSU_GET_TRIGGER) == 0)
+			if ((f = m_rp_params.GetTrigger (docTrigger)) == true) {
+				StringBuffer sb;
+				Writer<StringBuffer> writer(sb);
+				docTrigger.Accept (writer);
+				strReply = std::string (sb.GetString());
+			}
+	}
+	return (f);
+}
+*/
+//-----------------------------------------------------------------------------
+
+/*
 bool TPitayaInterface::HandleSampling (const Value &valSampling, std::string &strReply)
 {
 	bool f = true;
 	const char *szCommand;
+	Document docTrigger;
 
 	if (valSampling.HasMember (RPSU_OUTPUT))
 		f = HandleSamplingParams (valSampling[RPSU_OUTPUT], strReply);
@@ -305,12 +403,6 @@ bool TPitayaInterface::HandleSampling (const Value &valSampling, std::string &st
 		szCommand = valSampling[RPSU_COMMAND].GetString();
 		if (strcmp(szCommand, RPSU_START) == 0) {
 			StartSampling (valSampling, strReply);
-/*
-			if (m_pSendThread == NULL) {
-				SetQuitSender (false);
-				m_pSendThread = new thread (BinSender, this);
-			}
-*/
 		}
 		else if ((strcmp(szCommand, RPSU_STOP)) == 0) {
 			SetQuitSender (true);
@@ -318,11 +410,39 @@ bool TPitayaInterface::HandleSampling (const Value &valSampling, std::string &st
 			delete m_pSendThread;
 			m_pSendThread = NULL;
 		}
+		else if (strcmp (szCommand, RPSU_GET_TRIGGER) == 0)
+			if ((f = m_rp_params.GetTrigger (docTrigger)) == true) {
+				StringBuffer sb;
+				Writer<StringBuffer> writer(sb);
+				docTrigger.Accept (writer);
+				strReply = std::string (sb.GetString());
+			}
 	}
 	return (f);
 }
+*/
 //-----------------------------------------------------------------------------
 
+/*
+bool TPitayaInterface::StartSampling (const Json::Value &valSampling, std::string &strReply)
+{
+	int nSamplesCount;
+	bool f;
+
+	if ((f = GetJsonInt(valSampling, RPSU_SAMPLES, nSamplesCount)) == true) {
+		m_nSamples = nSamplesCount;
+		SetQuitSender (false);
+		if (m_pSendThread == NULL) {
+			m_pSendThread = new thread (BinSender, this);
+			strReply = RPSU_START;
+		}
+	}
+	return (f);
+}
+*/
+//-----------------------------------------------------------------------------
+
+/*
 bool TPitayaInterface::StartSampling (const Value &valSampling, std::string &strReply)
 {
 	int nSamplesCount;
@@ -338,8 +458,29 @@ bool TPitayaInterface::StartSampling (const Value &valSampling, std::string &str
 	}
 	return (f);
 }
+*/
 //-----------------------------------------------------------------------------
 
+bool TPitayaInterface::HandleSamplingParams (const Json::Value &valParams, std::string &strReply)
+{
+	bool f = true;
+
+	try {
+		if (!valParams[RPSU_SAMPLES].isNull())
+			m_nSamples = valParams[RPSU_SAMPLES].asInt();
+		if (!valParams[RPSU_SAMPLE_LEN])
+			m_nSampleLen = valParams[RPSU_SAMPLE_LEN].asInt();
+		f = true;
+	}
+	catch (std::exception &e) {
+		fprintf (stderr, "Runtime error:\n%s\n", e.what());
+		f = false;
+	}
+	return (f);
+}
+//-----------------------------------------------------------------------------
+
+/*
 bool TPitayaInterface::HandleSamplingParams (const Value &valParams, std::string &strReply)
 {
 	bool f = true;
@@ -357,6 +498,7 @@ bool TPitayaInterface::HandleSamplingParams (const Value &valParams, std::string
 	}
 	return (f);
 }
+*/
 //-----------------------------------------------------------------------------
 
 std::string TPitayaInterface::GetClientIP() const
@@ -386,5 +528,11 @@ int TPitayaInterface::GetReturnPort() const
 void TPitayaInterface::SetClientIP (const char *szClientIP)
 {
 	m_strClient = std::string(szClientIP);
+}
+//-----------------------------------------------------------------------------
+
+void TPitayaInterface::LoadSetup()
+{
+	m_rp_params.LoadFromJson (PITAYA_MOCK_NAME);
 }
 //-----------------------------------------------------------------------------

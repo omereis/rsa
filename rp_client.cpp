@@ -1,4 +1,9 @@
-// Client side C/C++ program to demonstrate Socket programming 
+/*******************************************************************************\
+|                               rp_client.cpp                                   |
+|																				|
+| Client side C/C++ program to demonstrate Socket programming 					|
+\*******************************************************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -89,6 +94,26 @@ std::string GetResultFileName()
 	return (strName);
 }
 //-----------------------------------------------------------------------------
+bool SetQuitFlag (bool flag)
+{
+	mutexQuitSender.lock();
+	s_fQuitSender = flag;
+	mutexQuitSender.unlock();
+	return (s_fQuitSender);
+}
+//-----------------------------------------------------------------------------
+
+bool GetQuitFlag ()
+{
+	bool flag;
+	
+	mutexQuitSender.lock();
+	flag = s_fQuitSender = flag;
+	mutexQuitSender.unlock();
+	return (flag);
+}
+
+//-----------------------------------------------------------------------------
 
 void ReadSamples (int nPort, int nSampleLen)
 {
@@ -100,17 +125,8 @@ void ReadSamples (int nPort, int nSampleLen)
 	char *buffer = new char [nSampleLen * sizeof (float)];
 	bool fQuit;
 	
-	mutexQuitSender.lock();
-	fQuit = s_fQuitSender = false;
-	mutexQuitSender.unlock();
+	fQuit = SetQuitFlag (false);
 
-		//fd_set set;
-		//struct timeval timeout;
-		//FD_ZERO(&set); /* clear the set */
-		//FD_SET(new_socket, &set); /* add our file descriptor to the set */
-		//timeout.tv_sec = 1;
-		//timeout.tv_usec = 0;
-		//int rv = select(new_socket, &set, NULL, NULL, &timeout);
 	server_fd = OpenServerSocket (nPort);
 	while (!fQuit) {
 		if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0){ 
@@ -121,11 +137,6 @@ void ReadSamples (int nPort, int nSampleLen)
 		valread = read(new_socket, buffer, nBufferSize);
 
 		if (valread > 0) {
-/*
-			FILE *f = fopen ("debug.txt", "a+");
-			fprintf (f, "\n%s\n", buffer);
-			fclose (f);
-*/
 			if (IsJsonQuit (buffer))
 				fQuit = true;
 			else {
@@ -141,7 +152,6 @@ void ReadSamples (int nPort, int nSampleLen)
 					TFloatVector::iterator i;
 					std::string strFileName = GetResultFileName();
 					FILE *file = fopen ("remote_data.txt", "a+");
-					//FILE *file = fopen (strFileName.c_str(), "w+");
 					fprintf (file, "-----------------------------------------------------\n");
 					for (i=vf.begin() ; i != vf.end() ; i++)
 						fprintf (file, "%g\n", *i);
@@ -165,7 +175,7 @@ void ReadSamples (int nPort, int nSampleLen)
 }
 //-----------------------------------------------------------------------------
 
-int SendData (const std::string &strAddress, int nPort, const std::string &strData)
+int SendData (const std::string &strAddress, int nPort, const std::string &strData, std::string &strAnswer)
 {
 	int sock = 0, valread;
 	struct sockaddr_in serv_addr;
@@ -191,9 +201,12 @@ int SendData (const std::string &strAddress, int nPort, const std::string &strDa
 		return -1;
 	}
 	send (sock, strData.c_str(), strData.size(), 0);
-	printf("Message sent: '%s'\n", strData.c_str());
-	//valread = read( sock , buffer, COMM_BUFFER_LENGTH);
-	printf("Server answer is: '%s'\n", buffer);
+	//printf("Message sent: '%s'\n", strData.c_str());
+	memset (buffer, 0, sizeof(buffer));
+	valread = read(sock ,buffer, COMM_BUFFER_LENGTH);
+	if (valread > 0)
+		strAnswer = std::string(buffer);
+	printf("Server answer has %d bytes\n", valread);
 }
 
 const char *aszMainMenu[] = {
@@ -216,23 +229,29 @@ void PrintMenu()
 }
 //-----------------------------------------------------------------------------
 
-std::string GetFileName ()
+std::string GetFileName (std::string &strDefaultFile)
 {
 	std::string strFileName;
 	
 	printf ("Enter File name [.json], plase... ");
+	if (trim(strDefaultFile).size() > 0)
+		printf ("[%s]", trim(strDefaultFile).c_str());
 	getline (cin, strFileName);
+	if (trim(strFileName).size() == 0)
+		strFileName = strDefaultFile;
+	else
+		strDefaultFile = strFileName;
 	if (strFileName.find (".") == string::npos)
 		strFileName += ".json";
 	return (strFileName);
 }
 //-----------------------------------------------------------------------------
 
-std::string ReadJSONFile ()
+std::string ReadJSONFile (std::string &strDefaultFile)
 {
 	std::string strFileName, strLine, strData="";
 	
-	strFileName = GetFileName ();
+	strFileName = GetFileName (strDefaultFile);
 	std::fstream file;// (strFileName);
 	file.open (strFileName.c_str(), ios::in);
 	if (file) {
@@ -245,7 +264,7 @@ std::string ReadJSONFile ()
 }
 //-----------------------------------------------------------------------------
 
-std::string GetDataToSend (bool &fToQuit)
+std::string GetDataToSend (bool &fToQuit, std::string &strDefaultFile)
 {
 	std::string strData;
 
@@ -256,12 +275,28 @@ std::string GetDataToSend (bool &fToQuit)
 	if (nData == 1)
 		strData = "Compose Message";
 	else if (nData == 2)
-		strData = ReadJSONFile ();//"JSON File";
+		strData = ReadJSONFile (strDefaultFile);//"JSON File";
 	else {
 		strData = "{\"quit\" : \"quit\"}";
 		fToQuit = true;
 	}
 	return (strData);
+}
+//-----------------------------------------------------------------------------
+void SaveReply (const std::string &strAnswer)
+{
+	FILE *file = NULL;
+
+	try {
+		file = fopen ("replies.txt", "a+");
+		fprintf (file, "---------------------------------------\n");
+		fprintf (file, "%s\n", strAnswer.c_str());
+	}
+	catch (std::exception &e) {
+		fprintf (stderr, "Runtime error in 'SaveReply':\n%s\n", e.what());
+	}
+	if (file != NULL)
+		fclose (file);
 }
 //-----------------------------------------------------------------------------
 
@@ -272,17 +307,20 @@ int main(int argc, char const *argv[])
 	const char *hello = "Hello from client";
 	char buffer[COMM_BUFFER_LENGTH] = {0};
 	int nPort;
-	string strAddress, strErr, strData;
+	string strAddress, strErr, strData, strAnswer;
 	bool fToQuit;
+	std::string strDefFile;
 
 	if (GetCliAddressPort (argc, argv, nPort, strAddress, strErr)) {
 		thread *pthReadSamples = new thread (ReadSamples, nPort + 1, 6250);
 		printf ("Connecting to server at %s:%d\n", strAddress.c_str(), nPort);
 		do {
-			strData = GetDataToSend(fToQuit);
-			SendData (strAddress, nPort, strData);
+			strData = GetDataToSend(fToQuit, strDefFile);
+			SendData (strAddress, nPort, strData, strAnswer);
+			if (strAnswer.size() > 0)
+				SaveReply (strAnswer);
 		} while (fToQuit == false);
-		SendData ("127.0.0.1", nPort+1, strData);
+		SendData ("127.0.0.1", nPort+1, strData, strAnswer);
 		mutexQuitSender.lock();
 		s_fQuitSender = true;
 		mutexQuitSender.unlock();

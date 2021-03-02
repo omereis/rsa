@@ -4,12 +4,15 @@
 #include <thread>
 #include <string>
 
+#include "jsoncpp/json/json.h"
+
 #include "rapidjson/document.h"     // rapidjson's DOM-style API
 #include "rapidjson/prettywriter.h" // for stringify JSON
 
 #include "redpitaya/include/rp.h"
 
 #include "rsa.h"
+#include "rp_params.h"
 
 using namespace rapidjson;
 using namespace std;
@@ -20,12 +23,14 @@ public:
 	TPitayaInterface ();
 	TPitayaInterface (const char *szClientIP);
 	~TPitayaInterface ();
-	bool FollowCommand (const Document &docCommand, std::string &strReply);
+	bool FollowCommand (Json::Value &root, std::string &strReply);
+	//bool FollowCommand (const Document &docCommand, std::string &strReply);
 	std::string GetClientIP() const;
 	int GetSamplesCount() const;
 	int GetSampleLength() const;
 	int GetReturnPort() const;
 
+	void LoadSetup();
 	void SetClientIP (const char *szClientIP);
 protected:
 	bool SetTrigger (const Value &valTrigger, std::string &strReply);
@@ -40,12 +45,15 @@ protected:
 	bool GetTriggerString (std::string &strReply);
 
 	void  SetDefaultParams ();
+	bool HandleSampling (const Json::Value &valSampling, std::string &strReply);
 	bool HandleSampling (const Value &valSampling, std::string &strReply);
+	bool HandleSamplingParams (const Json::Value &valParams, std::string &strReply);
 	bool HandleSamplingParams (const Value &valParams, std::string &strReply);
 
-	bool StartSampling (const Value &valSampling, std::string &strReply);
+	//bool StartSampling (const Value &valSampling, std::string &strReply);
 private:
 	Document m_document;
+	TRedPitayaParams m_rp_params;
 	int m_nSamples;
 	int m_nSampleLen;
 	int m_nReturnPort;

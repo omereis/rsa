@@ -1,9 +1,11 @@
 #ifndef	_RSA_INC
 #define	_RSA_INC
+
 #include <queue>
 #include <vector>
 #include <string>
 
+#include "jsoncpp/json/json.h"
 using namespace std;
 
 #define	DEFAULT_PORT	5500
