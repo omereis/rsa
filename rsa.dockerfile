@@ -15,8 +15,8 @@ RUN apt install -y curl zip unzip tar
 
 ENV HOME=/home/oe
 
-RUN git clone https://github.com/open-source-parsers/rapidjson /home/oe/rapidjson
-RUN cp -r /home/oe/rapidjson/include/* /usr/include
+#RUN git clone https://github.com/open-source-parsers/rapidjson /home/oe/rapidjson
+#RUN cp -r /home/oe/rapidjson/include/* /usr/include
 
 ENV CPLUS_INCLUDE_PATH=/usr/include;/home/oe/rapidjson/include
 ENV C_INCLUDE_PATH=/usr/include:/home/oe/rapidjson/include
