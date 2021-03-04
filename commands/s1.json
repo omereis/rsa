@@ -1,0 +1,8 @@
+{
+    "sampling" : {
+		"command" : "start",
+		"samples" : 1000
+	}
+}
+
+

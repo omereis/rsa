@@ -1,0 +1,9 @@
+{
+    "setup" : {
+		"rate" : 15.625e6,
+		"decimation" : 1,
+		"sample_length" : 5000
+	}
+}
+
+

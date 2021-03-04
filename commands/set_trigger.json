@@ -1,0 +1,10 @@
+{
+	"set_trigger" : {
+		"level" : 1e-3,
+		"delay" : 100e-6,
+		"source" : "in2",
+		"direction" : "rise"
+	}
+}
+
+
