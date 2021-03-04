@@ -125,9 +125,8 @@ int main(int argc, char const *argv[])
 	int nPort;// = DEFAULT_PORT;
 	TStringQueue qCommand, qReply;
 	std::mutex mutex;
-	std::thread threadSample (SampleInput);
+	//std::thread threadSample (SampleInput);
 	string strReply;
-	//Document document;  // Default template parameter uses UTF8 and MemoryPoolAllocator.
 	TPitayaInterface pi;
 	Json::Value root;
 	Json::Reader reader;
@@ -158,14 +157,6 @@ int main(int argc, char const *argv[])
 				if (!ActOnCommand (strJson, pi, root, szClientIP, strReply))
 					valread = 0;
 			}
-/*
-			if ((fParseError = document.Parse(strJson.c_str()).HasParseError()) == false) {
-				pi.SetClientIP (szClientIP);
-				//TPitayaInterface pi(szClientIP);
-				if (!ActOnCommand (strJson, pi, document, szClientIP, strReply))
-					valread = 0;
-			}
-*/
 		}
 		catch (std::exception &e) {
 			fprintf (stderr, "Parsing error:\n%s\n", e.what());
@@ -188,7 +179,7 @@ int main(int argc, char const *argv[])
 		}
 	} while (valread > 0);
 	g_fStop = true;
-	threadSample.join();
+	//threadSample.join();
 	//mutexStop.lock();
 	//g_fStop = true;
 	//mutexStop.unlock();
