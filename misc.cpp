@@ -323,3 +323,128 @@ std::string StringifyJson (const Json::Value &val)
 	return (strJson);
 }
 //-----------------------------------------------------------------------------
+
+std::string SamplingRateName (rp_acq_sampling_rate_t rate)
+{
+	std::string strRate;
+    
+	if (rate == RP_SMP_125M)
+		strRate = "125Mhz";
+   else if (rate == RP_SMP_15_625M)
+		strRate = "15.625Mhz";
+    else if (rate == RP_SMP_1_953M)
+		strRate = "1.963Mhz";
+    else if (rate == RP_SMP_122_070K)
+		strRate = "122.070Khz";
+    else if (rate == RP_SMP_15_258K)
+		strRate = "15.258Khz";
+    else if (rate == RP_SMP_1_907K)
+		strRate = "1.907Khz";
+	else
+		strRate = "";
+	return (strRate);
+}
+//-----------------------------------------------------------------------------
+rp_acq_sampling_rate_t SamplingRateFromName (const std::string &str)
+{
+	std::string strRate = ToLower (str);
+	rp_acq_sampling_rate_t rate;
+    
+	if (strRate == "125mhz")
+		rate = RP_SMP_125M;
+   else if (strRate == "15.625mhz")
+	   rate = RP_SMP_15_625M;
+	else if (strRate == "1.963mhz")
+		rate = RP_SMP_1_953M;
+	else if (strRate == "122.07kKhz")
+		rate = RP_SMP_122_070K;
+	else if (strRate == "15.258khz")
+		rate = RP_SMP_15_258K;
+	else if (strRate == "1.907Khz")
+		rate = RP_SMP_1_907K;
+	else
+		rate = (rp_acq_sampling_rate_t) -1;
+}
+//-----------------------------------------------------------------------------
+
+std::string GetChannelName (rp_channel_t channel)
+{
+	 std::string strChannel;
+
+	if (channel == RP_CH_1)
+		strChannel = "in1";
+	else if (channel == RP_CH_2)
+		strChannel = "in2";
+	else
+		strChannel = "";
+	return (strChannel);
+}
+//-----------------------------------------------------------------------------
+
+rp_channel_t SetChannelFromName (const string &str)
+{
+	rp_channel_t channel;
+	std::string strChannel = ToLower (str);
+	
+	if (strChannel == "in1")
+		channel = RP_CH_1;
+	else if (strChannel == "in2")
+		channel = RP_CH_2;
+	else
+		channel = (rp_channel_t) -1;
+	return (channel);
+}
+//-----------------------------------------------------------------------------
+
+string GetDecimationName (rp_acq_decimation_t decimation)
+{
+	std::string strDecimation;
+	
+    if (decimation == RP_DEC_1)
+		strDecimation = "1";
+    else if (decimation == RP_DEC_8)
+		strDecimation = "8";
+    else if (decimation == RP_DEC_64)
+		strDecimation = "64";
+    else if (decimation == RP_DEC_1024)
+		strDecimation = "1024";
+    else if (decimation == RP_DEC_8192)
+		strDecimation = "8191";
+    else if (decimation == RP_DEC_65536)
+		strDecimation = "65536";
+	else
+		strDecimation = "unknown";
+	return (strDecimation);
+}
+//-----------------------------------------------------------------------------
+
+rp_acq_decimation_t DecimationFromName (int nDecimation)
+{
+	rp_acq_decimation_t decimation;
+	std::string strDecimation;
+	
+	if (nDecimation == 1)
+		decimation = RP_DEC_1;
+    else if (nDecimation == 8)
+		decimation = RP_DEC_8;
+    else if (nDecimation == 64)
+		decimation = RP_DEC_64;
+    else if (nDecimation == 1024)
+		decimation = RP_DEC_1024;
+    else if (nDecimation == 8191)
+		decimation = RP_DEC_8192;
+    else if (nDecimation == 65536)
+		decimation = RP_DEC_65536;
+	else
+		decimation = (rp_acq_decimation_t) -1;
+	return (decimation);
+}
+//-----------------------------------------------------------------------------
+rp_acq_decimation_t DecimationFromName (const string &str)
+{
+	//int n = std::atoi(str.c_str());
+	//DecimationFromName (n);
+	//return (n);
+	return (DecimationFromName (std::atoi(str.c_str())));
+}
+//-----------------------------------------------------------------------------

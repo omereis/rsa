@@ -37,5 +37,13 @@ std::string& trim(std::string& str, const std::string& chars = "\t\n\v\f\r ");
 bool GetJsonInt (const Json::Value &val, const std::string &strKey, int &nValue);
 bool ReadPitayaSetup (Json::Value &valSetup);
 std::string StringifyJson (const Json::Value &val);
+rp_channel_t SetChannelFromName (const string &str);
+
+std::string SamplingRateName (rp_acq_sampling_rate_t rate);
+rp_acq_sampling_rate_t SamplingRateFromName (const std::string &str);
+std::string GetChannelName (rp_channel_t channel);
+rp_channel_t SetChannelFromName (const string &str);
+string GetDecimationName (rp_acq_decimation_t decimation);
+rp_acq_decimation_t DecimationFromName (int nDecimation);
 //-----------------------------------------------------------------------------
 #endif //__MISC_H_INC
