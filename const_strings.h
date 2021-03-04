@@ -30,7 +30,10 @@ extern const std::string g_strLevel;
 #define	RPSU_PSD_SHORT		"short"
 #define	RPSU_PSD_LONG		"long"
 #define	RPSU_PSD			"psd"
-
+#define	RPSU_RATE			"rate"
+#define	RPSU_CHANNEL		"channel"
+#define	RPSU_DECIMATION		"decimation"
+#define	RPSU_TRIGGER		"trigger"
 
 //-----------------------------------------------------------------------------
 #endif //__CONST_STRINGS
