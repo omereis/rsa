@@ -4,36 +4,33 @@
 
 #include <mutex>
 
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/socket.h>
 #include <netinet/in.h> 
-
 #include <unistd.h>
-
 #include <arpa/inet.h>
 
-//#include "rapidjson/document.h"     // rapidjson's DOM-style API
-//#include "rapidjson/prettywriter.h" // for stringify JSON
 #include "redpitaya/include/rp.h"
 
 #include "jsoncpp/json/json.h"
 
 #include "pitaya_interface.h"
-
 #include "rsa.h"
 #include "misc.h"
 #include "const_strings.h"
 #include "rp_signal.h"
 
-//using namespace rapidjson;
 using namespace std;
 //-----------------------------------------------------------------------------
 std::mutex mutexSender;
+
+std::mutex mutexSampling;
+
+static bool s_fStartSampling;
 static bool s_fStopSender=false;
 extern std::mutex mutexQueue;
-extern queue<TRpSignal> qSignals;
+static queue<TRpSignal> qSignals;
 //-----------------------------------------------------------------------------
 void SetQuitSender (bool f)
 {
@@ -43,6 +40,26 @@ void SetQuitSender (bool f)
 		s_fStopSender = true;
 	mutexSender.unlock();
 }
+//-----------------------------------------------------------------------------
+
+void SetStartSampling (bool f)
+{
+	mutexSampling.lock();
+	s_fStartSampling = f;
+	mutexSampling.unlock();
+}
+//-----------------------------------------------------------------------------
+
+bool GetStartSampling ()
+{
+	bool f;
+	
+	mutexSampling.lock();
+	f = s_fStartSampling;
+	mutexSampling.unlock();
+	return (f);
+}
+
 //-----------------------------------------------------------------------------
 int GetSample (float *afSamples, int nSampleLength)
 {
@@ -110,20 +127,57 @@ void BinSender (TPitayaInterface *pInterface)
 }
 //-----------------------------------------------------------------------------
 
+/******************************************************************************\
+|                              Sampler Thread                                  |
+\******************************************************************************/
+bool read_fast_analog (float *buff, uint32_t buff_size);
+//-----------------------------------------------------------------------------
+
+/*
+Sampler Pseudo Code
+-------------------
+	WaitForStart(timeout)
+	while (!QuitThread) {
+		GetSample (signal, timeout)
+		if (!timeout) {
+			queue.push(signal)
+			if (psd_required) {
+				psd_results = psd_analysis(signal)
+				qPsd.push (psd_results)
+			}
+			if (mca_required) {
+				mca_results = max_analysis (signal)
+				qMca.push (mca_results)
+			}
+		}
+		SamplerCommand = GetSamplingCommand()
+		if (SamplerCommand == StopSampling)
+			WaitForStart(timeout)
+		else if (SamplerCommand == QuiteThread)
+			QuiteThread = true;
+	}
+*/	
+
+//-----------------------------------------------------------------------------
+
+/******************************************************************************\
+|                        TPitayaInterface class                                |
+\******************************************************************************/
 TPitayaInterface::TPitayaInterface ()
 {
 	m_rp_params.Clear ();
 	SetDefaultParams ();
 	m_pSendThread = NULL;
+	m_pSampler = NULL;
 }
 //-----------------------------------------------------------------------------
 
 TPitayaInterface::TPitayaInterface (const char *szClientIP)
 {
 	m_strClient = std::string(szClientIP);
-	//m_document.CopyFrom (document, a);
 	SetDefaultParams ();
 	m_pSendThread = NULL;
+	m_pSampler = NULL;
 }
 //-----------------------------------------------------------------------------
 
@@ -131,11 +185,11 @@ TPitayaInterface::~TPitayaInterface ()
 {
 	if (m_pSendThread != NULL) {
 		SetQuitSender (true);
-		//mutexSender.lock();
-		//s_fStopSender = true;
-		//mutexSender.unlock();
 		m_pSendThread->join();
 		delete m_pSendThread;
+	}
+	if (m_pSampler != NULL) {
+		m_pSampler->join();
 	}
 }
 //-----------------------------------------------------------------------------
@@ -154,12 +208,15 @@ bool TPitayaInterface::FollowCommand (Json::Value &root, std::string &strReply)
 	bool f = false;
 	
 	try {
+		strReply = StringifyJson (root);
 		strReply = "";
-		if (!root[RPSU_GET_TRIGGER].isNull())
-			f = GetTriggerString (strReply);
-		else if (!root[RPSU_SET_TRIGGER].isNull())
-			f = m_rp_params.SetTrigger (root[RPSU_SET_TRIGGER], strReply);
-			f = SetTrigger (root[RPSU_SET_TRIGGER], strReply);
+		//if (!root[RPSU_SET_TRIGGER].isNull())
+			//f = m_rp_params.SetTrigger (root[RPSU_SET_TRIGGER], strReply);
+		if (!root[RPSU_SETUP].isNull())
+			f = HandleSetupCommand (root[RPSU_SETUP], strReply);
+		else if (!root[RPSU_SAMPLING].isNull())
+			f = HandleSampling (root[RPSU_SAMPLING], strReply);
+			//f = m_rp_params.SetSamplingParams (root[RPSU_SAMPLING], strReply);
 	}
 	catch (exception &e) {
 		strReply = e.what();
@@ -167,107 +224,148 @@ bool TPitayaInterface::FollowCommand (Json::Value &root, std::string &strReply)
 	}
 	return (f);
 }
-/*
-*/
 //-----------------------------------------------------------------------------
 
-/*
-bool TPitayaInterface::SetTrigger (const Value &valTrigger, string &strReply)
+bool TPitayaInterface::HandleSetupCommand (Json::Value &root, std::string &strReply)
 {
-	std::string str;
-	bool fRead=false;
-	double dValue;
+	bool f;
+	std::string strCommand, str;
 
-	fRead = UpdateTriggerValueItem(valTrigger, RPSU_DELAY, EVT_REAL);
-	fRead != UpdateTriggerValueItem(valTrigger, RPSU_LEVEL, EVT_REAL);
-	fRead != UpdateTriggerValueItem(valTrigger, RPSU_SOURCE, EVT_STRING);
-	fRead != UpdateTriggerValueItem(valTrigger, RPSU_DIR, EVT_STRING);
-	return (fRead);
-}
-//-----------------------------------------------------------------------------
-
-bool TPitayaInterface::UpdateTriggerValueItem(const Value &valTrigger, const char *szItem, EValueType type)
-{
-	std::string str;
-	bool fRead=false;
-	double dValue;
-
-	if (valTrigger.HasMember(szItem)) {
-		if (type == EVT_REAL) {
-			if ((fRead = ExtractValueReal (valTrigger[szItem], dValue)) == true)
-				fRead = UpdateTriggerItem (szItem, dValue);
-		}
-		else if (type == EVT_STRING) {
-			if ((fRead = ExtractValueString (valTrigger[szItem], str)) == true)
-				fRead = UpdateTriggerItem (szItem, str);
+	if (root.isString()) {
+		strCommand = ToLower (root.asString());
+		if (strCommand == std::string(RPSU_GET_SETUP))
+			f = m_rp_params.GetSamplingParams (strReply);
+		if (strCommand == std::string(RPSU_GET_TRIGGER)) {
+			if ((f = m_rp_params.GetTriggerAsString (str)) == true)
+				strReply += "\n" + str;
 		}
 	}
-	return (fRead);
-}
-//-----------------------------------------------------------------------------
-
-bool TPitayaInterface::ExtractValueReal (const Value &val, double &dValue)
-{
-	bool fRead = true;
-
-
-	dValue = 0.0;
-	if (val.IsString())
-		dValue = atof (val.GetString());
-	else if (val.IsDouble())
-		dValue = val.GetDouble();
-	else if (val.IsInt())
-		dValue = (double) val.GetInt();
+	if (root.isObject()) {
+	}
 	else
-		fRead = false;
-	return (fRead);
-}
-*/
-//-----------------------------------------------------------------------------
-
-//bool TPitayaInterface::ExtractValueString (const Value &val, std::string &str)
-//{
-	//bool fRead = true;
-
-	//str = "";
-	//if (val.IsString())
-		//str = val.GetString();
-	//return (fRead);
-//}
-//-----------------------------------------------------------------------------
-
+		f = true;
 /*
-bool TPitayaInterface::UpdateTriggerItem (const char *szTriggerItem, const double &dValue)
-{
-	Document docSetup;
-	bool fUpdate = false;
-	
-	if (ReadPitayaSetup (docSetup)) {
-		Value &valTrigger = docSetup[RPSU_SET_TRIGGER];
-		Value &valLevel = valTrigger[szTriggerItem];
-		valLevel.SetDouble (dValue);
-		fUpdate = WriteJson (docSetup);
-	}
-	return (fUpdate);
-}
+	if (!root[RPSU_GET_SETUP].isNull())
+		f = m_rp_params.GetSamplingParams (strReply);
+	if (!root[RPSU_GET_TRIGGER].isNull())
+		f = GetTriggerString (strReply);
 */
+	return (f);
+}
 //-----------------------------------------------------------------------------
 
-/*
-bool TPitayaInterface::UpdateTriggerItem (const char *szTriggerItem, const std::string &str)
+bool TPitayaInterface::HandleSampling (const Json::Value &root, std::string &strReply)
 {
-	Document docSetup;
-	bool fUpdate = false;
-	
-	if (ReadPitayaSetup (docSetup)) {
-		Value &valTrigger = docSetup[RPSU_SET_TRIGGER];
-		Value &valLevel = valTrigger[szTriggerItem];
-		valLevel.SetString (str.c_str(), str.size());
-		fUpdate = WriteJson (docSetup);
+	bool f;
+	if (root.isObject()) {
+		if (!root[RPSU_SAMPLING].isNull()) {
+			std::string strCommand = root[RPSU_SAMPLING].asString();
+			if (strCommand == std::string (RPSU_START))
+				f = StartSampling (strReply);
+			else if (strCommand == std::string (RPSU_STOP))
+				f = StopSampling (strReply);
+		}
 	}
-	return (fUpdate);
+	else
+		f = true;
+	return (f);
 }
-*/
+#include <condition_variable>
+#include <cstddef>
+#include <iostream>
+
+//-----------------------------------------------------------------------------
+std::condition_variable cond;
+std::mutex mtx;
+
+static bool s_fQuitSamplingThread;
+std::mutex mtxQuitThread;
+
+bool GetQuitSamplingThread ()
+{
+	bool f;
+
+	mtxQuitThread.lock ();
+	f = s_fQuitSamplingThread;
+	mtxQuitThread.unlock ();
+	return (f);
+}
+//-----------------------------------------------------------------------------
+void SetQuitSamplingThread (bool f)
+{
+	mtxQuitThread.lock ();
+	s_fQuitSamplingThread = f;
+	mtxQuitThread.unlock ();
+}
+//-----------------------------------------------------------------------------
+void WaitForStart(int timeout)
+{
+	bool fDoneWaiting=false;
+
+    std::unique_lock<std::mutex> lck(mtx);
+	while ((fDoneWaiting == false) && (cond.wait_for(lck,std::chrono::milliseconds(timeout))==std::cv_status::timeout)) {
+		fDoneWaiting = GetStartSampling ();
+	}
+	//cond.wait(lck, GetStartSampling);
+}
+using namespace std::chrono_literals;
+//-----------------------------------------------------------------------------
+void Sampler (TPitayaInterface *pInterface)
+{
+	bool fQuitSamplingThread = false;
+
+	fprintf (stderr, "Sampler started\n");
+	WaitForStart(500);
+	while (!fQuitSamplingThread) {
+		std::this_thread::sleep_for(500ms);
+		fQuitSamplingThread = GetQuitSamplingThread ();
+	}
+	fprintf (stderr, "Sampler Ended\n");
+}
+//-----------------------------------------------------------------------------
+
+bool TPitayaInterface::StartSampling (std::string &strReply)
+{
+	bool f;
+	
+	try {
+		SetQuitSamplingThread (false);
+		if (m_pSampler == NULL)
+			m_pSampler = new thread(Sampler, this);
+		SetStartSampling (true);
+		strReply = "Sampling Started";
+		f = true;
+		fprintf (stderr, "\nSampling Started\n");
+	}
+	catch (std::exception &e) {
+		strReply = std::string("Runtime error in 'TPitayaInterface::StartSampling'\n") + e.what();
+		f = false;
+	}
+	return (f);
+}
+//-----------------------------------------------------------------------------
+
+bool TPitayaInterface::StopSampling (std::string &strReply)
+{
+	bool f;
+	
+	try {
+		SetQuitSamplingThread (true);
+		SetStartSampling (true);
+		if (m_pSampler != NULL) {
+			m_pSampler->join();
+			m_pSampler = NULL;
+		}
+		strReply = "Sampling Ended";
+		f = true;
+		fprintf (stderr, "\nSampling Ended\n");
+	}
+	catch (std::exception &e) {
+		strReply = std::string("Runtime error in 'TPitayaInterface::StopSampling'\n") + e.what();
+		f = false;
+	}
+	return (f);
+}
 //-----------------------------------------------------------------------------
 
 bool TPitayaInterface::GetTriggerString (std::string &strReply)
@@ -276,11 +374,9 @@ bool TPitayaInterface::GetTriggerString (std::string &strReply)
 	bool fRead = false;
 
 	try {
-	//if (ReadPitayaSetup (valRedPitayaSetup)) {
 		m_rp_params.GetTrigger (jvalTrigger);
-		strReply = StringifyJson (jvalTrigger);//std::string(szJson);
+		strReply = StringifyJson (jvalTrigger);
 		fRead = true;
-	//}
 	}
 	catch (std::exception &e) {
 		fprintf (stderr, "Runtime error in GetTriggerString:\n%s\n", e.what());
@@ -288,193 +384,6 @@ bool TPitayaInterface::GetTriggerString (std::string &strReply)
 	}
 	return (fRead);
 }
-//-----------------------------------------------------------------------------
-
-bool TPitayaInterface::SetTrigger (Json::Value &jsonTrigger, std::string &strReply)
-{
-	return (true);
-}
-/*
-bool TPitayaInterface::GetTriggerString (std::string &strReply)
-{
-	Document docSetup;
-	bool fRead = false;
-
-	if (ReadPitayaSetup (docSetup)) {
-		Value &valTrigger = docSetup[RPSU_SET_TRIGGER];
-		StringBuffer buffer;
-		PrettyWriter<StringBuffer> writer(buffer);
-		valTrigger.Accept(writer);
-		const char* szJson = buffer.GetString();
-		strReply = std::string(szJson);
-		fRead = true;
-	}
-	return (fRead);
-}
-}
-*/
-//-----------------------------------------------------------------------------
-/*
-bool GetJsonInt (const Value &val, const std::string &strKey, int &nValue)
-{
-	const char *szKey = strKey.c_str();
-	bool fKeyExists = true;
-
-	if (val.HasMember (szKey))
-		nValue = val[szKey].GetInt();
-	else
-		fKeyExists = false;
-	return (fKeyExists);
-}
-*/
-//-----------------------------------------------------------------------------
-
-/*
-bool TPitayaInterface::HandleSampling (const Json::Value &valSampling, std::string &strReply)
-{
-	bool f = true;
-	const char *szCommand;
-	Document docTrigger;
-
-	if (!valSampling[RPSU_OUTPUT].isNull())
-		f = HandleSamplingParams (valSampling[RPSU_OUTPUT], strReply);
-	if (!valSampling[RPSU_RET_PORT].isNull())
-		m_nReturnPort = valSampling[RPSU_RET_PORT].asInt();
-	if (!valSampling[RPSU_COMMAND].isNull()) {
-		szCommand = valSampling[RPSU_COMMAND].asString();
-		if (strcmp(szCommand, RPSU_START) == 0) {
-			StartSampling (valSampling, strReply);
-		}
-		else if ((strcmp(szCommand, RPSU_STOP)) == 0) {
-			SetQuitSender (true);
-			m_pSendThread->join();
-			delete m_pSendThread;
-			m_pSendThread = NULL;
-		}
-		else if (strcmp (szCommand, RPSU_GET_TRIGGER) == 0)
-			if ((f = m_rp_params.GetTrigger (docTrigger)) == true) {
-				StringBuffer sb;
-				Writer<StringBuffer> writer(sb);
-				docTrigger.Accept (writer);
-				strReply = std::string (sb.GetString());
-			}
-	}
-	return (f);
-}
-*/
-//-----------------------------------------------------------------------------
-
-/*
-bool TPitayaInterface::HandleSampling (const Value &valSampling, std::string &strReply)
-{
-	bool f = true;
-	const char *szCommand;
-	Document docTrigger;
-
-	if (valSampling.HasMember (RPSU_OUTPUT))
-		f = HandleSamplingParams (valSampling[RPSU_OUTPUT], strReply);
-	if (valSampling.HasMember (RPSU_RET_PORT))
-		m_nReturnPort = valSampling[RPSU_RET_PORT].GetInt();
-	if (valSampling.HasMember (RPSU_COMMAND)) {
-		szCommand = valSampling[RPSU_COMMAND].GetString();
-		if (strcmp(szCommand, RPSU_START) == 0) {
-			StartSampling (valSampling, strReply);
-		}
-		else if ((strcmp(szCommand, RPSU_STOP)) == 0) {
-			SetQuitSender (true);
-			m_pSendThread->join();
-			delete m_pSendThread;
-			m_pSendThread = NULL;
-		}
-		else if (strcmp (szCommand, RPSU_GET_TRIGGER) == 0)
-			if ((f = m_rp_params.GetTrigger (docTrigger)) == true) {
-				StringBuffer sb;
-				Writer<StringBuffer> writer(sb);
-				docTrigger.Accept (writer);
-				strReply = std::string (sb.GetString());
-			}
-	}
-	return (f);
-}
-*/
-//-----------------------------------------------------------------------------
-
-/*
-bool TPitayaInterface::StartSampling (const Json::Value &valSampling, std::string &strReply)
-{
-	int nSamplesCount;
-	bool f;
-
-	if ((f = GetJsonInt(valSampling, RPSU_SAMPLES, nSamplesCount)) == true) {
-		m_nSamples = nSamplesCount;
-		SetQuitSender (false);
-		if (m_pSendThread == NULL) {
-			m_pSendThread = new thread (BinSender, this);
-			strReply = RPSU_START;
-		}
-	}
-	return (f);
-}
-*/
-//-----------------------------------------------------------------------------
-
-/*
-bool TPitayaInterface::StartSampling (const Value &valSampling, std::string &strReply)
-{
-	int nSamplesCount;
-	bool f;
-
-	if ((f = GetJsonInt(valSampling, RPSU_SAMPLES, nSamplesCount)) == true) {
-		m_nSamples = nSamplesCount;
-		SetQuitSender (false);
-		if (m_pSendThread == NULL) {
-			m_pSendThread = new thread (BinSender, this);
-			strReply = RPSU_START;
-		}
-	}
-	return (f);
-}
-*/
-//-----------------------------------------------------------------------------
-
-bool TPitayaInterface::HandleSamplingParams (const Json::Value &valParams, std::string &strReply)
-{
-	bool f = true;
-
-	try {
-		if (!valParams[RPSU_SAMPLES].isNull())
-			m_nSamples = valParams[RPSU_SAMPLES].asInt();
-		if (!valParams[RPSU_SAMPLE_LEN])
-			m_nSampleLen = valParams[RPSU_SAMPLE_LEN].asInt();
-		f = true;
-	}
-	catch (std::exception &e) {
-		fprintf (stderr, "Runtime error:\n%s\n", e.what());
-		f = false;
-	}
-	return (f);
-}
-//-----------------------------------------------------------------------------
-
-/*
-bool TPitayaInterface::HandleSamplingParams (const Value &valParams, std::string &strReply)
-{
-	bool f = true;
-
-	try {
-		if (valParams.HasMember (RPSU_SAMPLES))
-			m_nSamples = valParams[RPSU_SAMPLES].GetInt();
-		if (valParams.HasMember (RPSU_SAMPLE_LEN))
-			m_nSampleLen = valParams[RPSU_SAMPLE_LEN].GetInt();
-		f = true;
-	}
-	catch (std::exception &e) {
-		fprintf (stderr, "Runtime error:\n%s\n", e.what());
-		f = false;
-	}
-	return (f);
-}
-*/
 //-----------------------------------------------------------------------------
 
 std::string TPitayaInterface::GetClientIP() const
@@ -510,5 +419,9 @@ void TPitayaInterface::SetClientIP (const char *szClientIP)
 void TPitayaInterface::LoadSetup()
 {
 	m_rp_params.LoadFromJson (PITAYA_MOCK_NAME);
+}
+//-----------------------------------------------------------------------------
+bool TPitayaInterface::SetSamplingParams (Json::Value &jSampling, std::string &strReply)
+{
 }
 //-----------------------------------------------------------------------------
