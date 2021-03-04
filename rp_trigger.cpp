@@ -163,6 +163,18 @@ void TRedPitayaTrigger::GetJson (Json::Value &valTrigger)
 }
 //-----------------------------------------------------------------------------
 
+Json::Value TRedPitayaTrigger::AsJson () const
+{
+	Json::Value jTrigger;
+	//valTrigger.Clear();
+	jTrigger[RPSU_LEVEL] = GetLevel();
+	jTrigger[RPSU_DELAY] = GetDelay();
+	jTrigger[RPSU_SOURCE] = GetInput();
+	jTrigger[RPSU_DIR] = GetDirection ();
+	return (jTrigger);
+}
+//-----------------------------------------------------------------------------
+
 bool TRedPitayaTrigger::SetTrigger (const Json::Value &valTrigger)
 {
 	bool f;

@@ -23,6 +23,7 @@ public:
 	bool SetTrigger (const Json::Value &valTrigger);
 	//bool  JsonTrigger (Document &docTrigger);
 	void GetJson (Json::Value &valTrigger);
+	Json::Value AsJson () const;
 
 	bool LoadFromCard ();
 	bool UpdateInCard ();
